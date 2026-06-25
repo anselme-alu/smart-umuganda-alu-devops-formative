@@ -5,6 +5,7 @@
   "license": "MIT",
   "scripts": {
     "check-types": "tsc --noEmit",
+    "compile": "tsc",
     "build": "tsc",
     "dev": "ts-node-dev src/server.ts",
     "format": "prettier --write src/",
