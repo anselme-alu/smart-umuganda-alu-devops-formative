@@ -1,0 +1,13 @@
+name: CD
+
+on:
+  workflow_call:
+
+# CD pipeline — not yet configured.
+# Add deployment jobs here (e.g. build Docker image, push to registry, deploy to cloud).
+jobs:
+  placeholder:
+    runs-on: ubuntu-latest
+    steps:
+      - name: CD not yet configured
+        run: echo "CD pipeline coming soon"

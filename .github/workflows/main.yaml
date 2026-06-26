@@ -1,0 +1,14 @@
+name: Main CI & CD
+
+on:
+  push:
+    branches: ["**"]
+
+jobs:
+  ci:
+    uses: ./.github/workflows/ci.yaml
+
+  cd:
+    uses: ./.github/workflows/cd.yaml
+    needs: [ci]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'

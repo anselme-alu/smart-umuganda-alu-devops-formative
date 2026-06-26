@@ -1,0 +1,8 @@
+name: CI
+
+on:
+  workflow_call:
+
+jobs:
+  backend:
+    uses: ./.github/workflows/backend-ci.yaml
