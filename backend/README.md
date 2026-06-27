@@ -1,17 +1,22 @@
-# Backend
+# Smart Umuganda — Backend
 
-Express.js API server written in TypeScript.
+Express 5 API server written in TypeScript, backed by PostgreSQL via Drizzle ORM.
+
+→ [Root README](../README.md) for full project setup including the database.
 
 ## Prerequisites
 
 - [Node.js](https://nodejs.org/) v20+
 - [Yarn](https://yarnpkg.com/) v1 (classic)
+- A running PostgreSQL instance (see [docker-compose.db.yml](../docker-compose.db.yml))
 
 ## Setup
 
 ```bash
 cd backend
+cp .env.example .env   # fill in DATABASE_URL, JWT_SECRET, PORT
 yarn install
+yarn db:migrate        # apply pending migrations
 ```
 
 ## Available Scripts
@@ -19,14 +24,18 @@ yarn install
 | Script              | Description                            |
 | ------------------- | -------------------------------------- |
 | `yarn dev`          | Start the dev server with hot reload   |
-| `yarn compile`      | Compile TypeScript to `dist/`          |
-| `yarn build`        | Alias for compile                      |
+| `yarn build`        | Compile TypeScript to `dist/`          |
 | `yarn check-types`  | Type-check without emitting files      |
 | `yarn format`       | Auto-format source files with Prettier |
 | `yarn format:check` | Check formatting without writing       |
 | `yarn lint`         | Run ESLint                             |
 | `yarn lint:fix`     | Run ESLint and auto-fix                |
 | `yarn test`         | Run unit tests (Vitest, no watch)      |
+| `yarn test:coverage`| Run tests with coverage report         |
+| `yarn db:generate`  | Generate a new Drizzle migration       |
+| `yarn db:migrate`   | Apply pending migrations               |
+| `yarn db:push`      | Push schema changes directly (dev)     |
+| `yarn db:studio`    | Open Drizzle Studio                    |
 
 ## Development
 

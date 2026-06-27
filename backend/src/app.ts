@@ -5,6 +5,8 @@ import authRouter from "./routes/auth";
 import { eventsRouter } from "./routes/events";
 import locationsRouter from "./routes/locations";
 import usersRouter from "./routes/users";
+import issuesRouter from "./routes/issues";
+import announcementsRouter from "./routes/announcements";
 
 export const app = express();
 
@@ -24,6 +26,8 @@ app.use("/api/auth", authRouter);
 app.use("/api/events", eventsRouter);
 app.use("/api/users", usersRouter);
 app.use("/api/locations", locationsRouter);
+app.use("/api/issues", issuesRouter);
+app.use("/api/announcements", announcementsRouter);
 
 app.use(
   (

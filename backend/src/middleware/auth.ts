@@ -37,3 +37,12 @@ export function adminOnly(req: AuthRequest, res: Response, next: NextFunction) {
   }
   next();
 }
+
+export function staffOnly(req: AuthRequest, res: Response, next: NextFunction) {
+  const role = req.user?.role;
+  if (role !== "admin" && role !== "system_user") {
+    res.status(403).json({ error: "Staff access required" });
+    return;
+  }
+  next();
+}

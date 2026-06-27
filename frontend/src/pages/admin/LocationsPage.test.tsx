@@ -60,6 +60,29 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
+function mockGetByUrl(locationsData: unknown) {
+  vi.mocked(api.get).mockImplementation((url: unknown) => {
+    const u = url as string;
+    if (u.includes("unread-count"))
+      return Promise.resolve({ data: { unreadCount: 0 } });
+    return Promise.resolve({ data: locationsData });
+  });
+}
+
+let locationsCallCount = 0;
+function mockGetByUrlSequential(firstData: unknown, secondData: unknown) {
+  locationsCallCount = 0;
+  vi.mocked(api.get).mockImplementation((url: unknown) => {
+    const u = url as string;
+    if (u.includes("unread-count"))
+      return Promise.resolve({ data: { unreadCount: 0 } });
+    locationsCallCount++;
+    return Promise.resolve({
+      data: locationsCallCount <= 1 ? firstData : secondData,
+    });
+  });
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
   vi.mocked(useAuth).mockReturnValue({
@@ -87,7 +110,7 @@ describe("LocationsPage", () => {
   });
 
   it("shows empty state for active tab", async () => {
-    vi.mocked(api.get).mockResolvedValue({ data: [] });
+    mockGetByUrl([]);
     renderPage();
     await waitFor(() => {
       expect(screen.getByText(/No provinces found/i)).toBeInTheDocument();
@@ -95,9 +118,7 @@ describe("LocationsPage", () => {
   });
 
   it("renders location list for active tab", async () => {
-    vi.mocked(api.get).mockResolvedValue({
-      data: [mockProvince, mockDistrict],
-    });
+    mockGetByUrl([mockProvince, mockDistrict]);
     renderPage();
     await waitFor(() => {
       expect(screen.getByText("Northern Province")).toBeInTheDocument();
@@ -106,9 +127,7 @@ describe("LocationsPage", () => {
   });
 
   it("switches tab to district and shows district list", async () => {
-    vi.mocked(api.get).mockResolvedValue({
-      data: [mockProvince, mockDistrict],
-    });
+    mockGetByUrl([mockProvince, mockDistrict]);
     renderPage();
     await waitFor(() => screen.getByText("Northern Province"));
     fireEvent.click(screen.getByRole("button", { name: "district" }));
@@ -119,9 +138,7 @@ describe("LocationsPage", () => {
   });
 
   it("shows parent name in table row", async () => {
-    vi.mocked(api.get).mockResolvedValue({
-      data: [mockProvince, mockDistrict],
-    });
+    mockGetByUrl([mockProvince, mockDistrict]);
     renderPage();
     await waitFor(() => screen.getByText("Northern Province"));
     fireEvent.click(screen.getByRole("button", { name: "district" }));
@@ -129,7 +146,7 @@ describe("LocationsPage", () => {
   });
 
   it('opens add location modal when "Add Location" button is clicked', async () => {
-    vi.mocked(api.get).mockResolvedValue({ data: [] });
+    mockGetByUrl([]);
     renderPage();
     await waitFor(() => screen.getByText(/No provinces found/i));
     fireEvent.click(screen.getByRole("button", { name: /add location/i }));
@@ -143,7 +160,7 @@ describe("LocationsPage", () => {
   });
 
   it("closes modal when cancel is clicked", async () => {
-    vi.mocked(api.get).mockResolvedValue({ data: [] });
+    mockGetByUrl([]);
     renderPage();
     await waitFor(() => screen.getByText(/No provinces found/i));
     fireEvent.click(screen.getByRole("button", { name: /add location/i }));
@@ -156,9 +173,7 @@ describe("LocationsPage", () => {
   });
 
   it("creates a province on form submit", async () => {
-    vi.mocked(api.get)
-      .mockResolvedValueOnce({ data: [] })
-      .mockResolvedValueOnce({ data: [mockProvince] });
+    mockGetByUrlSequential([], [mockProvince]);
     vi.mocked(api.post).mockResolvedValue({ data: mockProvince });
     renderPage();
     await waitFor(() => screen.getByText(/No provinces found/i));
@@ -179,7 +194,7 @@ describe("LocationsPage", () => {
   });
 
   it("opens edit modal with pre-filled name", async () => {
-    vi.mocked(api.get).mockResolvedValue({ data: [mockProvince] });
+    mockGetByUrl([mockProvince]);
     renderPage();
     await waitFor(() => screen.getByText("Northern Province"));
     fireEvent.click(screen.getByTitle("Edit"));
@@ -188,11 +203,10 @@ describe("LocationsPage", () => {
   });
 
   it("updates a location on edit submit", async () => {
-    vi.mocked(api.get)
-      .mockResolvedValueOnce({ data: [mockProvince] })
-      .mockResolvedValueOnce({
-        data: [{ ...mockProvince, name: "Updated Province" }],
-      });
+    mockGetByUrlSequential(
+      [mockProvince],
+      [{ ...mockProvince, name: "Updated Province" }],
+    );
     vi.mocked(api.patch).mockResolvedValue({
       data: { ...mockProvince, name: "Updated Province" },
     });
@@ -214,7 +228,7 @@ describe("LocationsPage", () => {
   });
 
   it("shows delete confirmation modal", async () => {
-    vi.mocked(api.get).mockResolvedValue({ data: [mockProvince] });
+    mockGetByUrl([mockProvince]);
     renderPage();
     await waitFor(() => screen.getByText("Northern Province"));
     fireEvent.click(screen.getByTitle("Delete"));
@@ -222,9 +236,7 @@ describe("LocationsPage", () => {
   });
 
   it("deletes a location and refreshes", async () => {
-    vi.mocked(api.get)
-      .mockResolvedValueOnce({ data: [mockProvince] })
-      .mockResolvedValueOnce({ data: [] });
+    mockGetByUrlSequential([mockProvince], []);
     vi.mocked(api.delete).mockResolvedValue({ data: {} });
     renderPage();
     await waitFor(() => screen.getByText("Northern Province"));
@@ -241,7 +253,7 @@ describe("LocationsPage", () => {
   });
 
   it("shows parent selector when creating a district", async () => {
-    vi.mocked(api.get).mockResolvedValue({ data: [mockProvince] });
+    mockGetByUrl([mockProvince]);
     renderPage();
     await waitFor(() => screen.getByText("Northern Province"));
     fireEvent.click(screen.getByRole("button", { name: /add location/i }));
@@ -263,7 +275,7 @@ describe("LocationsPage", () => {
       isAxiosError: true,
       response: { data: { error: "Save failed" } },
     };
-    vi.mocked(api.get).mockResolvedValue({ data: [] });
+    mockGetByUrl([]);
     vi.mocked(api.post).mockRejectedValue(axiosError);
     const { default: axios } = await import("axios");
     vi.spyOn(axios, "isAxiosError").mockReturnValue(true);
