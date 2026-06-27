@@ -17,7 +17,7 @@ yarn install
 ## Available Scripts
 
 | Script              | Description                            |
-|---------------------|----------------------------------------|
+| ------------------- | -------------------------------------- |
 | `yarn dev`          | Start the dev server with hot reload   |
 | `yarn compile`      | Compile TypeScript to `dist/`          |
 | `yarn build`        | Alias for compile                      |
