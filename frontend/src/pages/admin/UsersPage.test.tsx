@@ -43,6 +43,15 @@ const regularUser = {
   updatedAt: "2024-01-01",
 };
 
+function mockGetByUrl(usersData: unknown) {
+  vi.mocked(api.get).mockImplementation((url: unknown) => {
+    const u = url as string;
+    if (u.includes("unread-count"))
+      return Promise.resolve({ data: { unreadCount: 0 } });
+    return Promise.resolve({ data: usersData });
+  });
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
   vi.mocked(useAuth).mockReturnValue({
@@ -70,7 +79,7 @@ describe("UsersPage", () => {
   });
 
   it("renders user list after loading", async () => {
-    vi.mocked(api.get).mockResolvedValue({ data: [adminUser, regularUser] });
+    mockGetByUrl([adminUser, regularUser]);
     renderPage();
     await waitFor(() => {
       expect(screen.getByText("user@example.com")).toBeInTheDocument();
@@ -80,7 +89,7 @@ describe("UsersPage", () => {
   });
 
   it('shows "No users found" when list is empty', async () => {
-    vi.mocked(api.get).mockResolvedValue({ data: [] });
+    mockGetByUrl([]);
     renderPage();
     await waitFor(() => {
       expect(screen.getByText("No users found.")).toBeInTheDocument();
@@ -102,7 +111,7 @@ describe("UsersPage", () => {
   });
 
   it("filters users by role when filter button clicked", async () => {
-    vi.mocked(api.get).mockResolvedValue({ data: [adminUser, regularUser] });
+    mockGetByUrl([adminUser, regularUser]);
     renderPage();
     await waitFor(() => {
       expect(screen.getByText("user@example.com")).toBeInTheDocument();
@@ -115,7 +124,7 @@ describe("UsersPage", () => {
   });
 
   it("shows delete confirmation modal when delete button clicked", async () => {
-    vi.mocked(api.get).mockResolvedValue({ data: [regularUser] });
+    mockGetByUrl([regularUser]);
     renderPage();
     await waitFor(() => {
       expect(screen.getByText("Regular User")).toBeInTheDocument();
@@ -125,7 +134,7 @@ describe("UsersPage", () => {
   });
 
   it("closes delete modal on cancel", async () => {
-    vi.mocked(api.get).mockResolvedValue({ data: [regularUser] });
+    mockGetByUrl([regularUser]);
     renderPage();
     await waitFor(() => screen.getByText("Regular User"));
     fireEvent.click(screen.getByTitle("Delete user"));
@@ -137,9 +146,14 @@ describe("UsersPage", () => {
   });
 
   it("deletes user and refreshes list", async () => {
-    vi.mocked(api.get)
-      .mockResolvedValueOnce({ data: [regularUser] })
-      .mockResolvedValueOnce({ data: [] });
+    let callCount = 0;
+    vi.mocked(api.get).mockImplementation((url: unknown) => {
+      const u = url as string;
+      if (u.includes("unread-count"))
+        return Promise.resolve({ data: { unreadCount: 0 } });
+      callCount++;
+      return Promise.resolve({ data: callCount === 1 ? [regularUser] : [] });
+    });
     vi.mocked(api.delete).mockResolvedValue({ data: {} });
     renderPage();
     await waitFor(() => screen.getByText("Regular User"));
@@ -151,16 +165,14 @@ describe("UsersPage", () => {
   });
 
   it("shows make-system-user button for regular users", async () => {
-    vi.mocked(api.get).mockResolvedValue({ data: [regularUser] });
+    mockGetByUrl([regularUser]);
     renderPage();
     await waitFor(() => screen.getByText("Regular User"));
     expect(screen.getByTitle("Make system user")).toBeInTheDocument();
   });
 
   it("promotes user to system_user", async () => {
-    vi.mocked(api.get)
-      .mockResolvedValueOnce({ data: [regularUser] })
-      .mockResolvedValueOnce({ data: [] });
+    mockGetByUrl([regularUser]);
     vi.mocked(api.post).mockResolvedValue({ data: {} });
     renderPage();
     await waitFor(() => screen.getByText("Regular User"));

@@ -1,9 +1,15 @@
-import { render, screen, fireEvent } from "@testing-library/react";
-import { describe, it, expect, vi } from "vitest";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { MemoryRouter } from "react-router-dom";
 
 vi.mock("../contexts/AuthContext", () => ({
   useAuth: vi.fn(),
+}));
+
+vi.mock("../api/client", () => ({
+  default: {
+    get: vi.fn(),
+  },
 }));
 
 const mockNavigate = vi.fn();
@@ -13,6 +19,7 @@ vi.mock("react-router-dom", async (importOriginal) => {
 });
 
 import { useAuth } from "../contexts/AuthContext";
+import api from "../api/client";
 import Layout from "./Layout";
 
 const adminUser = {
@@ -30,6 +37,10 @@ const regularUser = {
   name: "Regular User",
   role: "user" as const,
 };
+
+beforeEach(() => {
+  vi.mocked(api.get).mockResolvedValue({ data: { unreadCount: 0 } });
+});
 
 describe("Layout", () => {
   it("shows admin nav links for admin users", () => {
@@ -143,5 +154,45 @@ describe("Layout", () => {
       </MemoryRouter>,
     );
     expect(screen.getByText("My child content")).toBeInTheDocument();
+  });
+
+  it("shows unread count badge when there are unread announcements", async () => {
+    vi.mocked(api.get).mockResolvedValue({ data: { unreadCount: 3 } });
+    vi.mocked(useAuth).mockReturnValue({
+      user: regularUser,
+      isLoading: false,
+      login: vi.fn(),
+      register: vi.fn(),
+      logout: vi.fn(),
+    });
+    render(
+      <MemoryRouter>
+        <Layout>
+          <div>content</div>
+        </Layout>
+      </MemoryRouter>,
+    );
+    await waitFor(() => {
+      expect(screen.getAllByText("3").length).toBeGreaterThan(0);
+    });
+  });
+
+  it("shows Issues and Announcements nav links for all users", () => {
+    vi.mocked(useAuth).mockReturnValue({
+      user: regularUser,
+      isLoading: false,
+      login: vi.fn(),
+      register: vi.fn(),
+      logout: vi.fn(),
+    });
+    render(
+      <MemoryRouter>
+        <Layout>
+          <div>content</div>
+        </Layout>
+      </MemoryRouter>,
+    );
+    expect(screen.getAllByText("Issues").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Announcements").length).toBeGreaterThan(0);
   });
 });

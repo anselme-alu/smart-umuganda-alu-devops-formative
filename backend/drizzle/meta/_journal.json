@@ -8,6 +8,13 @@
       "when": 1782555325252,
       "tag": "0000_bored_calypso",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1782573008417,
+      "tag": "0001_pale_mister_sinister",
+      "breakpoints": true
     }
   ]
 }

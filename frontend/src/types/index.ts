@@ -40,3 +40,39 @@ export interface AuthResponse {
   token: string;
   user: User;
 }
+
+export type IssueType = "bad_citizen" | "umuganda_absence" | "other";
+export type IssueStatus =
+  "pending" | "reviewed" | "reported_to_police" | "closed";
+
+export interface IssueReply {
+  id: string;
+  issueId: string;
+  userId: string;
+  message: string;
+  createdAt: string;
+}
+
+export interface Issue {
+  id: string;
+  title: string;
+  description: string;
+  type: IssueType;
+  status: IssueStatus;
+  reportedBy: string;
+  locationId: string | null;
+  createdAt: string;
+  updatedAt: string;
+  replies?: IssueReply[];
+}
+
+export interface Announcement {
+  id: string;
+  title: string;
+  content: string;
+  createdBy: string;
+  locationId: string | null;
+  createdAt: string;
+  updatedAt: string;
+  isRead?: boolean;
+}

@@ -9,7 +9,7 @@ vi.mock("jsonwebtoken", () => ({
   },
 }));
 
-import { authenticate, adminOnly } from "./auth";
+import { authenticate, adminOnly, staffOnly } from "./auth";
 import jwt from "jsonwebtoken";
 
 function mockRes(): Response {
@@ -122,5 +122,47 @@ describe("adminOnly", () => {
     const next = vi.fn() as unknown as NextFunction;
     adminOnly(req, res, next);
     expect(res.status).toHaveBeenCalledWith(403);
+  });
+});
+
+describe("staffOnly", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("calls next when user is admin", () => {
+    const req = { user: { userId: "1", role: "admin" } } as AuthRequest;
+    const res = mockRes();
+    const next = vi.fn() as unknown as NextFunction;
+    staffOnly(req, res, next);
+    expect(next).toHaveBeenCalled();
+    expect(res.status).not.toHaveBeenCalled();
+  });
+
+  it("calls next when user is system_user", () => {
+    const req = { user: { userId: "1", role: "system_user" } } as AuthRequest;
+    const res = mockRes();
+    const next = vi.fn() as unknown as NextFunction;
+    staffOnly(req, res, next);
+    expect(next).toHaveBeenCalled();
+    expect(res.status).not.toHaveBeenCalled();
+  });
+
+  it("returns 403 for regular user", () => {
+    const req = { user: { userId: "1", role: "user" } } as AuthRequest;
+    const res = mockRes();
+    const next = vi.fn() as unknown as NextFunction;
+    staffOnly(req, res, next);
+    expect(res.status).toHaveBeenCalledWith(403);
+    expect(next).not.toHaveBeenCalled();
+  });
+
+  it("returns 403 when user is undefined", () => {
+    const req = { user: undefined } as unknown as AuthRequest;
+    const res = mockRes();
+    const next = vi.fn() as unknown as NextFunction;
+    staffOnly(req, res, next);
+    expect(res.status).toHaveBeenCalledWith(403);
+    expect(next).not.toHaveBeenCalled();
   });
 });

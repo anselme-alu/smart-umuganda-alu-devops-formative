@@ -9,6 +9,12 @@ import EventsPage from "./pages/events/EventsPage";
 import UsersPage from "./pages/admin/UsersPage";
 import UserEditPage from "./pages/admin/UserEditPage";
 import LocationsPage from "./pages/admin/LocationsPage";
+import IssuesPage from "./pages/issues/IssuesPage";
+import IssueFormPage from "./pages/issues/IssueFormPage";
+import IssueDetailPage from "./pages/issues/IssueDetailPage";
+import AnnouncementsPage from "./pages/announcements/AnnouncementsPage";
+import AnnouncementDetailPage from "./pages/announcements/AnnouncementDetailPage";
+import AnnouncementFormPage from "./pages/announcements/AnnouncementFormPage";
 
 export default function App() {
   return (
@@ -21,6 +27,24 @@ export default function App() {
           <Route element={<ProtectedRoute />}>
             <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/events" element={<EventsPage />} />
+
+            <Route path="/issues" element={<IssuesPage />} />
+            <Route path="/issues/new" element={<IssueFormPage />} />
+            <Route path="/issues/:id" element={<IssueDetailPage />} />
+
+            <Route path="/announcements" element={<AnnouncementsPage />} />
+            <Route
+              path="/announcements/:id"
+              element={<AnnouncementDetailPage />}
+            />
+            <Route
+              path="/announcements/new"
+              element={<AnnouncementFormPage mode="create" />}
+            />
+            <Route
+              path="/announcements/:id/edit"
+              element={<AnnouncementFormPage mode="edit" />}
+            />
 
             <Route element={<AdminRoute />}>
               <Route path="/admin/users" element={<UsersPage />} />

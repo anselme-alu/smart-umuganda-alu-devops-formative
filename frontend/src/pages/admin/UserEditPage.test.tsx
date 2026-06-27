@@ -39,6 +39,18 @@ const mockUser = {
 
 const adminUser = { ...mockUser, id: "admin-1", role: "admin" as const };
 
+function mockGetByUrl(userData: unknown, locationsData: unknown = []) {
+  vi.mocked(api.get).mockImplementation((url: unknown) => {
+    const u = url as string;
+    if (u.includes("unread-count"))
+      return Promise.resolve({ data: { unreadCount: 0 } });
+    if (u.includes("/users/")) return Promise.resolve({ data: userData });
+    if (u.includes("/locations"))
+      return Promise.resolve({ data: locationsData });
+    return Promise.resolve({ data: {} });
+  });
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
   vi.mocked(useAuth).mockReturnValue({
@@ -80,9 +92,7 @@ describe("UserEditPage", () => {
   });
 
   it("renders the form pre-populated with user data", async () => {
-    vi.mocked(api.get)
-      .mockResolvedValueOnce({ data: mockUser })
-      .mockResolvedValueOnce({ data: [] });
+    mockGetByUrl(mockUser, []);
     renderPage();
     await waitFor(() => {
       expect(screen.getByDisplayValue("Test User")).toBeInTheDocument();
@@ -91,9 +101,7 @@ describe("UserEditPage", () => {
   });
 
   it("submits form and shows success alert", async () => {
-    vi.mocked(api.get)
-      .mockResolvedValueOnce({ data: mockUser })
-      .mockResolvedValueOnce({ data: [] });
+    mockGetByUrl(mockUser, []);
     vi.mocked(api.patch).mockResolvedValue({ data: mockUser });
     renderPage();
     await waitFor(() => {
@@ -115,9 +123,7 @@ describe("UserEditPage", () => {
   });
 
   it("shows error when save fails", async () => {
-    vi.mocked(api.get)
-      .mockResolvedValueOnce({ data: mockUser })
-      .mockResolvedValueOnce({ data: [] });
+    mockGetByUrl(mockUser, []);
     const axiosError = {
       isAxiosError: true,
       response: { data: { error: "Update failed" } },
@@ -143,9 +149,7 @@ describe("UserEditPage", () => {
       parentId: null,
       createdAt: "2024-01-01",
     };
-    vi.mocked(api.get)
-      .mockResolvedValueOnce({ data: mockUser })
-      .mockResolvedValueOnce({ data: [mockLocation] });
+    mockGetByUrl(mockUser, [mockLocation]);
     renderPage();
     await waitFor(() => {
       expect(
@@ -155,9 +159,7 @@ describe("UserEditPage", () => {
   });
 
   it('navigates back to users list on success "Back to Users" click', async () => {
-    vi.mocked(api.get)
-      .mockResolvedValueOnce({ data: mockUser })
-      .mockResolvedValueOnce({ data: [] });
+    mockGetByUrl(mockUser, []);
     vi.mocked(api.patch).mockResolvedValue({ data: mockUser });
     renderPage();
     await waitFor(() => screen.getByDisplayValue("Test User"));

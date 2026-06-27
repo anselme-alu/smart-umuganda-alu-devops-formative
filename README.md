@@ -1,86 +1,127 @@
 # Smart Umuganda
 
-**Connecting communities through digital civic engagement.**
+> Connecting communities through digital civic engagement.
 
-## Problem Statement
+## African Context
 
-Residents often miss information about upcoming Umuganda activities, while local leaders struggle with manual attendance tracking, communication, and reporting of community projects. Smart Umuganda aims to digitize community engagement and improve participation in local development initiatives.
+In Rwanda, Umuganda is a monthly community work day where citizens come together to build and maintain public infrastructure. Despite its cultural importance, community leaders still rely on manual processes — paper sign-in sheets, word-of-mouth announcements, and phone calls — to coordinate participation and track outcomes. This results in low awareness, poor attendance records, and limited accountability for local development projects.
 
-## Target Users
+Smart Umuganda digitizes the entire community engagement cycle: residents discover upcoming activities, leaders publish announcements, citizens report local issues, and attendance is tracked automatically. By bringing these workflows online, Smart Umuganda makes Rwanda's most valuable civic tradition more accessible, transparent, and impactful.
 
-* Citizens
-* Community leaders
-* Local authorities
+## Team Members
 
-## Core Features
+| Name | Role | Email |
+| ---- | ---- | ----- |
+| Anselme Irumva Habumugisha | Software Engineer | a.irumva@alustudent.com |
+| Nshimiyandinze Fiston | Software Engineer | n.fiston@alustudent.com |
 
-* Event listing for upcoming Umuganda activities
-* Attendance registration and tracking
-* Community announcements
-* Local issue reporting
-* Community project tracking
+## Project Overview
+
+Smart Umuganda is a full-stack civic engagement platform built to modernize Rwanda's monthly community work tradition. The application connects citizens with their local community leaders through a shared digital space where upcoming Umuganda events are visible, announcements are broadcast, and local issues are surfaced and tracked.
+
+On the backend, a RESTful API built with Node.js, Express 5, and TypeScript manages authentication, user profiles, community events, attendance records, and issue reports. Data is persisted in PostgreSQL 16 via Drizzle ORM, and the API enforces role-based access control to distinguish between citizens, community leaders, and administrators.
+
+On the frontend, a React 19 single-page application provides an intuitive interface tailored to each user role. Citizens can browse events, register attendance, and submit issue reports. Leaders and administrators can create events, post announcements, manage users, and review community project progress. The entire stack is containerized with Docker and continuously validated through GitHub Actions CI pipelines.
+
+### Target Users
+
+- **Citizens** — discover local events, register attendance, and report community issues
+- **Community leaders** — publish events and announcements, track participation
+- **Local authorities** — monitor project progress and review community reports
+
+### Core Features
+
+- **Event management**: create, list, and manage upcoming Umuganda activities
+- **Attendance tracking**: citizens register for events; leaders see real-time attendance
+- **Community announcements**: leaders broadcast news to their local community
+- **Issue reporting**: citizens flag local infrastructure or social problems
+- **Role-based access**: separate dashboards and permissions for each user type
 
 ## Technology Stack
 
-### Frontend
+| Layer    | Technology                     |
+| -------- | ------------------------------ |
+| Frontend | React 19, Tailwind CSS, Vite   |
+| Backend  | Node.js, Express 5, TypeScript |
+| Database | PostgreSQL 16, Drizzle ORM     |
+| DevOps   | GitHub Actions, Docker         |
 
-* React
-* Tailwind CSS
+## Getting Started
 
-### Backend
+### Prerequisites
 
-* Node.js
-* Express.js
+- [Node.js](https://nodejs.org/) v20+
+- [Yarn](https://yarnpkg.com/) v1 (classic)
+- [Docker](https://www.docker.com/) (for the database)
 
-### Database
+### Installation
 
-* PostgreSQL
+1. Clone the repository
 
-### Version Control & DevOps
+```bash
+git clone https://github.com/anselme-alu/smart-umuganda-alu-devops-formative.git
+cd smart-umuganda-alu-devops-formative
+```
 
-* GitHub
-* GitHub Projects
-* Docker (future deployment)
-* GitHub Actions (future CI/CD)
+2. Start the database
 
-## Project Structure
+```bash
+docker compose -f docker-compose.db.yml up -d
+```
 
-smart-umuganda-alu-devops-formative-1/
-
-├── frontend/
-
-├── backend/
-
-├── README.md
-
-├── .gitignore
-
-└── docs/
-
-## Run Locally
-
-### Backend
+3. Set up and start the backend
 
 ```bash
 cd backend
-npm install
-npm run dev
+cp .env.example .env   # edit values if needed
+yarn install
+yarn db:migrate
+yarn dev               # http://localhost:8000
 ```
 
-### Frontend
+4. Set up and start the frontend (new terminal)
 
 ```bash
 cd frontend
-npm install
-npm run dev
+yarn install
+yarn dev               # http://localhost:5173
 ```
 
-## Initial Functional Feature
+### Usage
 
-The first version of Smart Umuganda allows citizens to:
+Open [http://localhost:5173](http://localhost:5173) in your browser. Register an account to get started as a citizen, or use a seeded leader/admin account (see [backend/README.md](./backend/README.md)) to access the management dashboard.
 
-* View upcoming Umuganda events
-* See event dates and locations
-* Access community announcements
+## Project Structure
 
-This demonstrates the project's core functionality while providing a foundation for future features.
+```
+smart-umuganda/
+├── backend/          # Express API — see backend/README.md
+├── frontend/         # React app  — see frontend/README.md
+├── .github/
+│   └── workflows/   # CI/CD pipelines
+├── docker-compose.db.yml
+├── Makefile
+└── README.md
+```
+
+## CI/CD
+
+The project uses GitHub Actions for continuous integration.
+
+| Workflow           | What it does                                      |
+| ------------------ | ------------------------------------------------- |
+| `backend-ci.yaml`  | Lint, type-check, and test the Express API        |
+| `frontend-ci.yaml` | Lint, type-check, and build the React app         |
+| `ci.yaml`          | Orchestrates both backend and frontend CI         |
+| `cd.yaml`          | Deployment pipeline (in progress)                 |
+
+## Links
+
+- [Project Board](https://github.com/users/anselme-alu/projects/1)
+- [Backend Documentation](./backend/README.md)
+- [Frontend Documentation](./frontend/README.md)
+- [Team collaboration sheet](https://docs.google.com/spreadsheets/d/1DSzKnZjLoce4OMATBgfHCLmnEqlwf7LKUY_8CONuzs8/edit?usp=sharing)
+
+## License
+
+MIT License
