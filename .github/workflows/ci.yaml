@@ -6,3 +6,6 @@ on:
 jobs:
   backend:
     uses: ./.github/workflows/backend-ci.yaml
+
+  frontend:
+    uses: ./.github/workflows/frontend-ci.yaml
