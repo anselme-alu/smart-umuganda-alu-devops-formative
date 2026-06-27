@@ -1,10 +1,6 @@
 export type Role = "admin" | "user" | "system_user";
 export type LocationType =
-  | "province"
-  | "district"
-  | "sector"
-  | "cell"
-  | "village";
+  "province" | "district" | "sector" | "cell" | "village";
 
 export const LOCATION_TYPES: LocationType[] = [
   "province",

@@ -1,6 +1,7 @@
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import {
   LayoutDashboard,
+  CalendarDays,
   Users,
   MapPin,
   LogOut,
@@ -10,6 +11,7 @@ import { useAuth } from "../contexts/AuthContext";
 
 const navLinks = [
   { to: "/dashboard", label: "Dashboard", Icon: LayoutDashboard },
+  { to: "/events", label: "Events", Icon: CalendarDays },
   { to: "/admin/users", label: "Users", Icon: Users, adminOnly: true },
   { to: "/admin/locations", label: "Locations", Icon: MapPin, adminOnly: true },
 ];
