@@ -11,4 +11,5 @@ jobs:
   cd:
     uses: ./.github/workflows/cd.yaml
     needs: [ci]
+    # only run the CD if the push was pushed to the main branch
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
