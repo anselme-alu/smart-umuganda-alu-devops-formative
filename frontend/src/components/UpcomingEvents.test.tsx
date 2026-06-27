@@ -6,7 +6,9 @@ describe("UpcomingEvents", () => {
   it("renders an empty state", () => {
     render(<UpcomingEvents events={[]} errorMessage="" isLoading={false} />);
 
-    expect(screen.getByText("No upcoming Umuganda events have been scheduled yet.")).toBeInTheDocument();
+    expect(
+      screen.getByText("No upcoming Umuganda events have been scheduled yet."),
+    ).toBeInTheDocument();
   });
 
   it("shows a loading state", () => {
@@ -16,7 +18,14 @@ describe("UpcomingEvents", () => {
   });
 
   it("shows management action only when allowed", () => {
-    render(<UpcomingEvents canManageEvents events={[]} errorMessage="" isLoading={false} />);
+    render(
+      <UpcomingEvents
+        canManageEvents
+        events={[]}
+        errorMessage=""
+        isLoading={false}
+      />,
+    );
 
     expect(screen.getByRole("button", { name: "Create event" })).toBeDisabled();
   });

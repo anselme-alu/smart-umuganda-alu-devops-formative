@@ -13,7 +13,9 @@ export function useUpcomingEvents() {
         const upcomingEvents = await fetchUpcomingEvents();
         setEvents(upcomingEvents);
       } catch {
-        setErrorMessage("We could not load upcoming Umuganda events. Please try again later.");
+        setErrorMessage(
+          "We could not load upcoming Umuganda events. Please try again later.",
+        );
       } finally {
         setIsLoading(false);
       }

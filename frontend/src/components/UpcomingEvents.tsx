@@ -8,14 +8,21 @@ type UpcomingEventsProps = {
   canManageEvents?: boolean;
 };
 
-export function UpcomingEvents({ canManageEvents = false, events, errorMessage, isLoading }: UpcomingEventsProps) {
+export function UpcomingEvents({
+  canManageEvents = false,
+  events,
+  errorMessage,
+  isLoading,
+}: UpcomingEventsProps) {
   const hasNoEvents = !isLoading && !errorMessage && events.length === 0;
 
   return (
     <section className="space-y-6" aria-labelledby="upcoming-events-heading">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <p className="text-xs font-bold uppercase tracking-[0.2em] text-primary">Events</p>
+          <p className="text-xs font-bold uppercase tracking-[0.2em] text-primary">
+            Events
+          </p>
           <h2 id="upcoming-events-heading" className="mt-2 text-3xl font-bold">
             Upcoming Umuganda events
           </h2>
@@ -42,7 +49,9 @@ export function UpcomingEvents({ canManageEvents = false, events, errorMessage, 
         <div className="card bg-base-100 shadow">
           <div className="card-body items-center text-center">
             <h3 className="card-title">No events scheduled</h3>
-            <p className="text-sm text-base-content/60">No upcoming Umuganda events have been scheduled yet.</p>
+            <p className="text-sm text-base-content/60">
+              No upcoming Umuganda events have been scheduled yet.
+            </p>
           </div>
         </div>
       )}

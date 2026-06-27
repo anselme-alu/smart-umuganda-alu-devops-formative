@@ -15,7 +15,8 @@ const initialEvents: UmugandaEvent[] = [
   {
     id: "event-1",
     title: "Community road cleaning",
-    description: "Residents will clean drainage channels and remove litter along the main road.",
+    description:
+      "Residents will clean drainage channels and remove litter along the main road.",
     location: "Kimironko market road",
     district: "Gasabo",
     sector: "Kimironko",
@@ -29,11 +30,14 @@ const initialEvents: UmugandaEvent[] = [
   {
     id: "event-2",
     title: "Tree planting activity",
-    description: "Community members will plant trees around the public playground.",
+    description:
+      "Community members will plant trees around the public playground.",
     location: "Remera community playground",
     district: "Gasabo",
     sector: "Remera",
-    date: toDateOnly(new Date(nextSaturday.getTime() + 7 * 24 * 60 * 60 * 1000)),
+    date: toDateOnly(
+      new Date(nextSaturday.getTime() + 7 * 24 * 60 * 60 * 1000),
+    ),
     startTime: "07:30",
     endTime: "10:30",
     organizer: "Remera Sector Office",
@@ -47,14 +51,19 @@ let attendanceRecords: AttendanceRecord[] = [];
 
 const normalize = (value: string) => value.trim().toLowerCase();
 
-const hasText = (value: unknown): value is string => typeof value === "string" && value.trim().length > 0;
+const hasText = (value: unknown): value is string =>
+  typeof value === "string" && value.trim().length > 0;
 
 export function listUpcomingEvents(now = new Date()) {
   const todayDate = toDateOnly(now);
 
   return events
     .filter((event) => event.date >= todayDate)
-    .sort((first, second) => `${first.date}T${first.startTime}`.localeCompare(`${second.date}T${second.startTime}`));
+    .sort((first, second) =>
+      `${first.date}T${first.startTime}`.localeCompare(
+        `${second.date}T${second.startTime}`,
+      ),
+    );
 }
 
 export function getEventById(eventId: string) {
@@ -82,8 +91,16 @@ export function createUmugandaEvent(input: CreateUmugandaEventInput) {
 }
 
 export function validateEventInput(input: Partial<CreateUmugandaEventInput>) {
-  const requiredFields: Array<keyof CreateUmugandaEventInput> = ["title", "location", "date", "startTime", "endTime"];
-  const missingFields = requiredFields.filter((field) => !hasText(input[field]));
+  const requiredFields: Array<keyof CreateUmugandaEventInput> = [
+    "title",
+    "location",
+    "date",
+    "startTime",
+    "endTime",
+  ];
+  const missingFields = requiredFields.filter(
+    (field) => !hasText(input[field]),
+  );
 
   if (missingFields.length > 0) {
     return `Missing required fields: ${missingFields.join(", ")}`;
@@ -122,7 +139,9 @@ export function markAttendance(eventId: string, input: CreateAttendanceInput) {
   });
 
   if (duplicateRecord) {
-    return { error: "Attendance already recorded for this participant" as const };
+    return {
+      error: "Attendance already recorded for this participant" as const,
+    };
   }
 
   const attendance: AttendanceRecord = {

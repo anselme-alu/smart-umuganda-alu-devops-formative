@@ -7,7 +7,8 @@ import { useUpcomingEvents } from "../../hooks/useUpcomingEvents";
 export default function EventsPage() {
   const { user } = useAuth();
   const { events, errorMessage, isLoading } = useUpcomingEvents();
-  const canManageEvents = user?.role === "admin" || user?.role === "system_user";
+  const canManageEvents =
+    user?.role === "admin" || user?.role === "system_user";
 
   return (
     <Layout>

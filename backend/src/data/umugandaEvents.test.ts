@@ -55,7 +55,9 @@ describe("umuganda event store", () => {
     });
 
     expect(firstAttendance).toHaveProperty("attendance");
-    expect(duplicateAttendance).toEqual({ error: "Attendance already recorded for this participant" });
+    expect(duplicateAttendance).toEqual({
+      error: "Attendance already recorded for this participant",
+    });
     expect(event.attendanceCount).toBe(1);
   });
 });

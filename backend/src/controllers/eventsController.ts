@@ -7,7 +7,10 @@ import {
   markAttendance,
   validateEventInput,
 } from "../data/umugandaEvents";
-import type { CreateAttendanceInput, CreateUmugandaEventInput } from "../models/umugandaEvent";
+import type {
+  CreateAttendanceInput,
+  CreateUmugandaEventInput,
+} from "../models/umugandaEvent";
 
 type EventParams = {
   eventId: string;
@@ -50,11 +53,22 @@ export function getEventAttendance(req: Request<EventParams>, res: Response) {
   return res.json({ attendance: listAttendanceForEvent(req.params.eventId) });
 }
 
-export function createEventAttendance(req: Request<EventParams>, res: Response) {
-  const result = markAttendance(req.params.eventId, req.body as CreateAttendanceInput);
+export function createEventAttendance(
+  req: Request<EventParams>,
+  res: Response,
+) {
+  const result = markAttendance(
+    req.params.eventId,
+    req.body as CreateAttendanceInput,
+  );
 
   if ("error" in result) {
-    const status = result.error === "Event not found" ? 404 : result.error.includes("already") ? 409 : 400;
+    const status =
+      result.error === "Event not found"
+        ? 404
+        : result.error.includes("already")
+          ? 409
+          : 400;
     return res.status(status).json({ message: result.error });
   }
 
