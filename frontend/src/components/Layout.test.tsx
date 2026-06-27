@@ -70,6 +70,24 @@ describe("Layout", () => {
     expect(screen.queryByText("Locations")).not.toBeInTheDocument();
   });
 
+  it("shows events navigation for regular users", () => {
+    vi.mocked(useAuth).mockReturnValue({
+      user: regularUser,
+      isLoading: false,
+      login: vi.fn(),
+      register: vi.fn(),
+      logout: vi.fn(),
+    });
+    render(
+      <MemoryRouter>
+        <Layout>
+          <div>content</div>
+        </Layout>
+      </MemoryRouter>,
+    );
+    expect(screen.getAllByText("Events").length).toBeGreaterThan(0);
+  });
+
   it("shows user first name in the navbar", () => {
     vi.mocked(useAuth).mockReturnValue({
       user: adminUser,
