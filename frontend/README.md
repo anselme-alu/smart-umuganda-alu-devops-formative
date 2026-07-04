@@ -46,3 +46,18 @@ Tests use [Vitest](https://vitest.dev/). Test files live alongside source files 
 ```bash
 yarn test
 ```
+
+## Docker
+
+A multi-stage [`Dockerfile`](./Dockerfile) builds the app: the first stage compiles the Vite bundle, the final stage serves the static files with `nginx:alpine` on port `80`.
+
+- **`.dockerignore`** keeps `node_modules/`, `dist/`, and `coverage/` out of the build context.
+
+Build and run standalone:
+
+```bash
+docker build -t smart-umuganda-frontend .
+docker run -p 5001:80 smart-umuganda-frontend
+```
+
+The frontend is normally started via the root [`docker-compose.yaml`](../docker-compose.yaml) alongside the backend and database. See the [Root README](../README.md#docker) for the full stack.
