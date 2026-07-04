@@ -95,14 +95,38 @@ Open [http://localhost:5173](http://localhost:5173) in your browser. Register an
 
 ```
 smart-umuganda/
-├── backend/          # Express API — see backend/README.md
-├── frontend/         # React app  — see frontend/README.md
+├── backend/               # Express API — Dockerfile, .dockerignore, README.md
+├── frontend/              # React app  — Dockerfile, .dockerignore, README.md
 ├── .github/
-│   └── workflows/   # CI/CD pipelines
-├── docker-compose.db.yml
+│   └── workflows/         # CI/CD pipelines
+├── docker-compose.yaml    # Full stack: database + backend + frontend
+├── docker-compose.db.yml  # Database only (for local dev)
 ├── Makefile
 └── README.md
 ```
+
+## Docker
+
+The whole application is containerized. Each service has its own multi-stage `Dockerfile` and a `.dockerignore` that trims the build context (`node_modules/`, `dist/`, `coverage/`).
+
+| Service    | Image base      | Port  | Notes                                        |
+| ---------- | --------------- | ----- | -------------------------------------------- |
+| `datastore`| `postgres:16`   | 5432  | PostgreSQL with a persistent volume          |
+| `backend`  | `node:24-alpine`| 8000  | Runs migrations on startup, then the API     |
+| `frontend` | `nginx:alpine`  | 5001  | Static build served by nginx                 |
+
+Two compose files are provided:
+
+- **[`docker-compose.yaml`](./docker-compose.yaml)** — builds and runs the full stack (database, backend, frontend) with service dependencies and health checks.
+- **[`docker-compose.db.yml`](./docker-compose.db.yml)** — the database only, for local development while running the apps with `yarn dev`.
+
+Run the entire stack:
+
+```bash
+docker compose up --build
+```
+
+Then open [http://localhost:5001](http://localhost:5001). The backend is available at `http://localhost:8000`.
 
 ## CI/CD
 
