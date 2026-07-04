@@ -52,3 +52,18 @@ Tests use [Vitest](https://vitest.dev/). Test files live alongside source files 
 ```bash
 yarn test
 ```
+
+## Docker
+
+A multi-stage [`Dockerfile`](./Dockerfile) builds the API: the first stage compiles TypeScript, the final stage runs only production dependencies on `node:24-alpine`. On startup the container applies pending migrations, then launches the server.
+
+- **`.dockerignore`** keeps `node_modules/`, `dist/`, and `coverage/` out of the build context.
+
+Build and run standalone:
+
+```bash
+docker build -t smart-umuganda-backend .
+docker run -p 8000:8000 --env-file .env smart-umuganda-backend
+```
+
+The backend is normally started via the root [`docker-compose.yaml`](../docker-compose.yaml), which wires it to the Postgres container. See the [Root README](../README.md#docker) for the full stack.
