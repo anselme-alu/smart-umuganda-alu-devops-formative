@@ -99,7 +99,9 @@ smart-umuganda/
 ├── frontend/              # React app  — Dockerfile, .dockerignore, README.md
 ├── .github/
 │   └── workflows/         # CI/CD pipelines
-├── docker-compose.yaml    # Full stack: database + backend + frontend
+├── Dockerfile             # Root backend container configuration
+├── docker-compose.yml     # Full stack: database + backend + frontend
+├── docker-compose.yaml    # Alias of docker-compose.yml
 ├── docker-compose.db.yml  # Database only (for local dev)
 ├── Makefile
 └── README.md
@@ -107,37 +109,45 @@ smart-umuganda/
 
 ## Docker
 
-The whole application is containerized. Each service has its own multi-stage `Dockerfile` and a `.dockerignore` that trims the build context (`node_modules/`, `dist/`, `coverage/`).
+The whole application is containerized with multi-stage builds, non-root users, and health checks.
 
-| Service    | Image base      | Port  | Notes                                        |
-| ---------- | --------------- | ----- | -------------------------------------------- |
-| `datastore`| `postgres:16`   | 5432  | PostgreSQL with a persistent volume          |
-| `backend`  | `node:24-alpine`| 8000  | Runs migrations on startup, then the API     |
-| `frontend` | `nginx:alpine`  | 5001  | Static build served by nginx                 |
+| Service     | Image base         | Port  | Notes                                        |
+| ----------- | ------------------ | ----- | -------------------------------------------- |
+| `datastore` | `postgres:16`      | 5432  | PostgreSQL with a persistent volume          |
+| `backend`   | `node:24-alpine`   | 8000  | Root `Dockerfile` — migrations on startup    |
+| `frontend`  | `nginx:1.27-alpine`| 5001  | Static build served by nginx                 |
+
+**Required files:**
+
+| File                | Purpose                                      |
+| ------------------- | -------------------------------------------- |
+| `Dockerfile`        | Root backend container (multi-stage, non-root)|
+| `docker-compose.yml`| Full stack orchestration                     |
+| `.dockerignore`     | Trims build context                          |
 
 Two compose files are provided:
 
-- **[`docker-compose.yaml`](./docker-compose.yaml)** — builds and runs the full stack (database, backend, frontend) with service dependencies and health checks.
+- **[`docker-compose.yml`](./docker-compose.yml)** — builds and runs the full stack (database, backend, frontend) with service dependencies, health checks, and restart policies.
 - **[`docker-compose.db.yml`](./docker-compose.db.yml)** — the database only, for local development while running the apps with `yarn dev`.
 
-Run the entire stack:
+Run the entire stack with a single command:
 
 ```bash
-docker compose up --build
+docker compose -f docker-compose.yml up --build
 ```
 
 Then open [http://localhost:5001](http://localhost:5001). The backend is available at `http://localhost:8000`.
 
 ## CI/CD
 
-The project uses GitHub Actions for continuous integration.
+GitHub Actions runs on every push to feature branches and on pull requests targeting `main`.
 
-| Workflow           | What it does                                      |
-| ------------------ | ------------------------------------------------- |
-| `backend-ci.yaml`  | Lint, type-check, and test the Express API        |
-| `frontend-ci.yaml` | Lint, type-check, and build the React app         |
-| `ci.yaml`          | Orchestrates both backend and frontend CI         |
-| `cd.yaml`          | Deployment pipeline (in progress)                 |
+| Workflow   | Trigger                              | What it does                                           |
+| ---------- | ------------------------------------ | ------------------------------------------------------ |
+| `ci.yml`   | Push (except `main`), PR → `main`    | Lint, test, and build Docker images for backend + frontend |
+| `main.yaml`| Push to `main`                       | CD placeholder (deployment coming soon)                |
+
+The CI pipeline fails if linting, tests, or Docker builds fail.
 
 ## Links
 

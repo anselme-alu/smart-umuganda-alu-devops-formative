@@ -4,11 +4,11 @@ FROM node:24-alpine AS builder
 WORKDIR /app
 
 # Copy dependency manifests first so Docker can cache this layer when source changes
-COPY package.json yarn.lock ./
+COPY backend/package.json backend/yarn.lock ./
 
 RUN yarn install --frozen-lockfile
 
-COPY . .
+COPY backend/ .
 
 RUN yarn build
 
@@ -23,7 +23,7 @@ WORKDIR /app
 
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/drizzle ./drizzle
-COPY package.json yarn.lock ./
+COPY backend/package.json backend/yarn.lock ./
 
 RUN yarn install --production --frozen-lockfile && \
     chown -R appuser:appgroup /app

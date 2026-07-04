@@ -1,31 +1,27 @@
+# Stage 1 — build the React production bundle
 FROM node:24-alpine AS builder
 
-# Set the working directory inside the container
 WORKDIR /app
 
-# Copy package.json and yarn.lock
+# Copy dependency manifests first so Docker can cache this layer when source changes
 COPY package.json yarn.lock ./
 
-# Install dependencies
 RUN yarn install --frozen-lockfile
 
-# Copy the rest of the application code
 COPY . .
 
-# Build the application
 RUN yarn build
 
-# Use nginx as the base image for the final stage (The web server for react app)
-FROM nginx:alpine
+# Stage 2 — serve static files with nginx
+FROM nginx:1.27-alpine
 
-# Copy the built application from the builder stage to the nginx html directory
+# nginx:alpine ships with a non-root-capable setup; use the built-in nginx user
 COPY --from=builder /app/dist /var/www/html
-
-# Copy the nginx configuration file
 COPY configs/nginx.conf /etc/nginx/conf.d/default.conf
 
-# Expose the port the app runs on
 EXPOSE 80
 
-# Start nginx
+HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
+  CMD wget -qO- http://127.0.0.1:80/ > /dev/null || exit 1
+
 CMD ["nginx", "-g", "daemon off;"]
