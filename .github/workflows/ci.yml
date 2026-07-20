@@ -169,7 +169,23 @@ jobs:
         run: yarn install --frozen-lockfile
 
       - name: Run yarn audit (high and critical)
-        run: yarn audit --level high
+        run: |
+          yarn audit --json > audit.json || true
+          node -e "
+            const fs = require('fs');
+            const summary = fs.readFileSync('audit.json', 'utf8')
+              .trim()
+              .split('\n')
+              .map((line) => { try { return JSON.parse(line); } catch { return null; } })
+              .find((entry) => entry && entry.type === 'auditSummary');
+            if (!summary) {
+              console.error('Could not parse yarn audit output');
+              process.exit(1);
+            }
+            const v = summary.data.vulnerabilities;
+            console.log('Audit counts:', v);
+            if ((v.high || 0) + (v.critical || 0) > 0) process.exit(1);
+          "
 
   iac-scan:
     name: IaC Scan
