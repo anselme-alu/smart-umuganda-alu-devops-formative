@@ -1,5 +1,5 @@
 # Stage 1 — build the React production bundle
-FROM node:24-alpine AS builder
+FROM node:24-alpine3.24 AS builder
 
 WORKDIR /app
 

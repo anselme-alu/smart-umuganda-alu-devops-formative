@@ -1,0 +1,5 @@
+# Container scans in CI: enforce OS (Alpine) vulnerabilities on runtime images.
+# Application npm dependencies are covered by yarn audit in CI.
+pkg:
+  types:
+    - os

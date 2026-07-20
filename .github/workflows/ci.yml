@@ -132,6 +132,8 @@ jobs:
           ignore-unfixed: true
           severity: CRITICAL,HIGH
           vuln-type: os
+          trivy-config: .trivy.yaml
+          trivyignores: .trivyignore
           skip-dirs: /usr/local/share/.cache
 
       - name: Scan frontend image with Trivy
@@ -145,6 +147,8 @@ jobs:
           ignore-unfixed: true
           severity: CRITICAL,HIGH
           vuln-type: os
+          trivy-config: .trivy.yaml
+          trivyignores: .trivyignore
 
   dependency-scan:
     name: Dependency Scan

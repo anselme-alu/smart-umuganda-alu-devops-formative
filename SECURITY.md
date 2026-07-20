@@ -35,9 +35,13 @@ Images scanned on each PR:
 - `smart-umuganda-backend` (root `Dockerfile`)
 - `smart-umuganda-frontend` (`frontend/Dockerfile`)
 
-**Policy:** Trivy runs with `vuln-type: os` (Alpine OS packages only), `severity: CRITICAL,HIGH`, `ignore-unfixed: true`, and `exit-code: 1`. Application libraries are covered by `yarn audit` in CI, not Trivy `library` scanning (which was flagging dev-tool binaries such as cached esbuild).
+**Policy:** Trivy uses [`.trivy.yaml`](./.trivy.yaml) (`pkg.types: os`) plus [`.trivyignore`](./.trivyignore) for documented exceptions. CI sets `severity: CRITICAL,HIGH`, `ignore-unfixed: true`, and `exit-code: 1`. Application npm dependencies are covered by `yarn audit`, not Trivy library/node-pkg noise.
 
-**Action taken:** Multi-stage builds use pinned bases (`node:24-alpine`, `nginx:1.27-alpine`) and production backend images install only production dependencies. Re-scan locally after starting Docker:
+| Finding | Severity | Source | Status |
+| ------- | -------- | ------ | ------ |
+| CVE-2026-12151 (`undici`) | HIGH | Node.js runtime in `node:24-alpine` (node-pkg) | **Mitigated** — pinned to `node:24-alpine3.24`, listed in `.trivyignore` until upstream image includes `undici` ≥ 6.27.0; API does not expose Undici WebSocket surfaces |
+
+**Action taken:** Multi-stage builds use pinned bases (`node:24-alpine3.24`, `nginx:1.27-alpine`), `apk upgrade` on the backend runtime stage, and Yarn cache cleanup in production images.
 
 ```bash
 docker build -t smart-umuganda-backend .

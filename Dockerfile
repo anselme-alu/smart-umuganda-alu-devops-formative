@@ -1,5 +1,5 @@
 # Stage 1 — compile the TypeScript backend API
-FROM node:24-alpine AS builder
+FROM node:24-alpine3.24 AS builder
 
 WORKDIR /app
 
@@ -13,7 +13,7 @@ COPY backend/ .
 RUN yarn build
 
 # Stage 2 — lean production image
-FROM node:24-alpine
+FROM node:24-alpine3.24
 
 # Patch OS packages in the base image before adding application files
 RUN apk upgrade --no-cache
