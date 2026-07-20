@@ -131,7 +131,8 @@ jobs:
           exit-code: "1"
           ignore-unfixed: true
           severity: CRITICAL,HIGH
-          trivy-args: --pkg-types os
+          vuln-type: os
+          skip-dirs: /usr/local/share/.cache
 
       - name: Scan frontend image with Trivy
         if: github.event_name == 'pull_request'
@@ -143,7 +144,7 @@ jobs:
           exit-code: "1"
           ignore-unfixed: true
           severity: CRITICAL,HIGH
-          trivy-args: --pkg-types os
+          vuln-type: os
 
   dependency-scan:
     name: Dependency Scan

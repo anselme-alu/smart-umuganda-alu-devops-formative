@@ -35,7 +35,7 @@ Images scanned on each PR:
 - `smart-umuganda-backend` (root `Dockerfile`)
 - `smart-umuganda-frontend` (`frontend/Dockerfile`)
 
-**Policy:** Trivy runs with `severity: CRITICAL,HIGH`, `ignore-unfixed: true`, `exit-code: 1`, and `--pkg-types os` on the **runtime** images. Application dependency risk is covered separately by `yarn audit` in CI. Images also run `apk upgrade` during build and remove Yarn cache directories so dev-tool binaries (for example cached `esbuild`) are not shipped in production layers.
+**Policy:** Trivy runs with `vuln-type: os` (Alpine OS packages only), `severity: CRITICAL,HIGH`, `ignore-unfixed: true`, and `exit-code: 1`. Application libraries are covered by `yarn audit` in CI, not Trivy `library` scanning (which was flagging dev-tool binaries such as cached esbuild).
 
 **Action taken:** Multi-stage builds use pinned bases (`node:24-alpine`, `nginx:1.27-alpine`) and production backend images install only production dependencies. Re-scan locally after starting Docker:
 
