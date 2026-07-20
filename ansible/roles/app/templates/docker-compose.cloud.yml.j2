@@ -1,0 +1,22 @@
+# Managed by Ansible. PostgreSQL is provided by managed RDS, so only the
+# backend and frontend run here.
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    env_file: .env
+    ports:
+      - "{{ app_backend_port }}:8000"
+
+  frontend:
+    build:
+      context: frontend
+      args:
+        VITE_API_URL: "http://{{ app_public_endpoint }}:{{ app_backend_port }}/api"
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "{{ app_frontend_port }}:80"

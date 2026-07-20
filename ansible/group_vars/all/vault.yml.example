@@ -1,0 +1,4 @@
+---
+# Copy to vault.yml, fill in, then: ansible-vault encrypt group_vars/all/vault.yml
+vault_db_password: "CHANGE_ME__from__terraform_output_db_password"
+vault_jwt_secret: "CHANGE_ME__long_random_string"

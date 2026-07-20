@@ -10,6 +10,11 @@ RUN yarn install --frozen-lockfile
 
 COPY . .
 
+# Injected at build time so the SPA knows where the API lives. Falls back to
+# the localhost default in src/api/client.ts when unset (e.g. local builds).
+ARG VITE_API_URL=""
+ENV VITE_API_URL=$VITE_API_URL
+
 RUN yarn build
 
 # Stage 2 — serve static files with nginx

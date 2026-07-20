@@ -1,0 +1,9 @@
+---
+# Install with: ansible-galaxy collection install -r requirements.yml
+collections:
+  - name: community.docker # docker_compose_v2 module
+    version: ">=3.6.0"
+  - name: community.general # ufw module
+    version: ">=8.0.0"
+  - name: amazon.aws # aws_ec2 dynamic inventory plugin
+    version: ">=7.0.0"
