@@ -1,0 +1,3 @@
+# Bundled with the Node.js runtime in node:24-alpine (not app code).
+# Tracked until the official Node base image ships undici >= 6.27.0.
+CVE-2026-12151
