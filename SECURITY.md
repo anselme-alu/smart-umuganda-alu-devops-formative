@@ -41,7 +41,7 @@ Images scanned on each PR:
 | ------- | -------- | ------ | ------ |
 | CVE-2026-12151 (`undici`) | HIGH | Node.js runtime in `node:24-alpine` (node-pkg) | **Mitigated** — pinned to `node:24-alpine3.24`, listed in `.trivyignore` until upstream image includes `undici` ≥ 6.27.0; API does not expose Undici WebSocket surfaces |
 
-**Action taken:** Multi-stage builds use pinned bases (`node:24-alpine3.24`, `nginx:1.27-alpine`), `apk upgrade` on the backend runtime stage, and Yarn cache cleanup in production images.
+**Action taken:** Multi-stage builds use pinned bases (`node:24-alpine3.24`, `nginx:1.27-alpine`). Both runtime stages run `apk update && apk upgrade --no-cache` so Alpine OS CVEs with published fixes (for example `zlib`, `libxml2`, `musl`, `openssl`) are patched at build time. Production backend images also run Yarn cache cleanup.
 
 ```bash
 docker build -t smart-umuganda-backend .

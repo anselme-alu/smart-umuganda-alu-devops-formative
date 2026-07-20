@@ -16,7 +16,7 @@ RUN yarn build
 FROM node:24-alpine3.24
 
 # Patch OS packages in the base image before adding application files
-RUN apk upgrade --no-cache
+RUN apk update && apk upgrade --no-cache
 
 # Run as a dedicated non-root user (security best practice)
 RUN addgroup -g 1001 -S appgroup && \
