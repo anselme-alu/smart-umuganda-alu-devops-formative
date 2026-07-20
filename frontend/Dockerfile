@@ -20,6 +20,9 @@ RUN yarn build
 # Stage 2 — serve static files with nginx
 FROM nginx:1.27-alpine
 
+# Apply Alpine security patches before adding application files
+RUN apk update && apk upgrade --no-cache
+
 # nginx:alpine ships with a non-root-capable setup; use the built-in nginx user
 COPY --from=builder /app/dist /var/www/html
 COPY configs/nginx.conf /etc/nginx/conf.d/default.conf
