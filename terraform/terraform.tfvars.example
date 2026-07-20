@@ -1,0 +1,40 @@
+# Copy this file to terraform.tfvars and adjust the values.
+#   cp terraform.tfvars.example terraform.tfvars
+#
+# terraform.tfvars is git-ignored. NEVER put real secrets in a committed file —
+# prefer environment variables (TF_VAR_db_password) or a secrets manager for
+# anything sensitive.
+
+# --- Global -----------------------------------------------------------------
+aws_region   = "us-east-1"
+project_name = "smart-umuganda"
+environment  = "dev"
+
+# --- Networking -------------------------------------------------------------
+vpc_cidr             = "10.0.0.0/16"
+public_subnet_cidrs  = ["10.0.1.0/24", "10.0.2.0/24"]
+private_subnet_cidrs = ["10.0.101.0/24", "10.0.102.0/24"]
+
+# --- Compute ----------------------------------------------------------------
+instance_type = "t3.small"
+
+# Restrict SSH to your own IP in real deployments, e.g. "203.0.113.4/32".
+ssh_allowed_cidr = "0.0.0.0/0"
+
+# Paste the contents of your public key to enable SSH (optional).
+# Generate with: ssh-keygen -t ed25519 -f ./smart-umuganda-key
+# ssh_public_key = "ssh-ed25519 AAAA... you@example.com"
+
+# --- Database ---------------------------------------------------------------
+db_name              = "smart_umuganda"
+db_username          = "umuganda_admin"
+db_instance_class    = "db.t3.micro"
+db_allocated_storage = 20
+db_engine_version    = "16"
+
+# Keep at 0 for AWS free-tier accounts (backups disabled). Use 1-35 on a paid account.
+db_backup_retention_period = 0
+
+# Leave db_password unset to auto-generate a strong value.
+# To pin it, prefer the environment instead of this file:
+#   export TF_VAR_db_password="..."

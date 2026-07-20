@@ -1,0 +1,22 @@
+# Local Terraform state and working directories
+.terraform/
+.terraform.tfstate.lock.info
+*.tfstate
+*.tfstate.*
+crash.log
+crash.*.log
+
+# Variable files may contain secrets — never commit real values.
+# The example file is intentionally allowed.
+*.tfvars
+*.tfvars.json
+!*.tfvars.example
+
+# CLI config / plan artifacts
+.terraformrc
+terraform.rc
+*.tfplan
+
+# SSH keys generated for the demo
+*.pem
+smart-umuganda-key*
