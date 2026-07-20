@@ -1,0 +1,36 @@
+# Dynamic inventory — discovers the instance directly from AWS by tag, so you
+# never hand-edit an IP. Requires: amazon.aws collection + boto3 + valid AWS
+# credentials in the environment.
+#
+# Usage:
+#   ansible-inventory -i inventory/aws_ec2.yml --graph
+#   ansible-playbook  -i inventory/aws_ec2.yml site.yml
+---
+plugin: amazon.aws.aws_ec2
+
+regions:
+  - us-east-1
+
+# Only running instances tagged as this project (matches the Terraform tags).
+filters:
+  tag:Project: smart-umuganda
+  instance-state-name: running
+
+# Use the public IP as the connection address.
+hostnames:
+  - ip-address
+
+compose:
+  ansible_host: public_ip_address
+  ansible_user: "'ubuntu'"
+
+# Put the app instance(s) into an "app" group so site.yml (hosts: app) matches.
+groups:
+  app: "tags.Name is defined and 'app' in tags.Name"
+
+# Convenience groups keyed on tags, e.g. env_dev, project_smart_umuganda.
+keyed_groups:
+  - key: tags.Environment
+    prefix: env
+  - key: tags.Project
+    prefix: project

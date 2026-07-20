@@ -1,0 +1,51 @@
+---
+- name: Clone/update the application repository
+  ansible.builtin.git:
+    repo: "{{ app_repo_url }}"
+    dest: "{{ app_dir }}"
+    version: "{{ app_repo_branch }}"
+    force: true
+
+- name: Render the environment file
+  ansible.builtin.template:
+    src: env.j2
+    dest: "{{ app_dir }}/.env"
+    owner: root
+    group: root
+    mode: "0600"
+
+- name: Render the deployment compose file
+  ansible.builtin.template:
+    src: docker-compose.cloud.yml.j2
+    dest: "{{ app_dir }}/docker-compose.cloud.yml"
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Build and (re)deploy the application stack
+  community.docker.docker_compose_v2:
+    project_src: "{{ app_dir }}"
+    files:
+      - docker-compose.cloud.yml
+    build: always
+    state: present
+    recreate: auto
+  register: app_compose_result
+
+- name: Wait for the backend health endpoint to report healthy
+  ansible.builtin.uri:
+    url: "http://127.0.0.1:{{ app_backend_port }}/health"
+    status_code: 200
+  register: app_backend_health
+  retries: 20
+  delay: 10
+  until: app_backend_health.status == 200
+
+- name: Wait for the frontend to respond
+  ansible.builtin.uri:
+    url: "http://127.0.0.1:{{ app_frontend_port }}/"
+    status_code: 200
+  register: app_frontend_health
+  retries: 10
+  delay: 5
+  until: app_frontend_health.status == 200

@@ -1,0 +1,27 @@
+---
+- name: Configure and deploy the Smart Umuganda application server
+  hosts: app
+  become: true
+  gather_facts: true
+
+  pre_tasks:
+    - name: Assert required variables are set
+      ansible.builtin.assert:
+        that:
+          - db_host is defined and db_host != "REPLACE_WITH_RDS_ENDPOINT_HOST"
+          - vault_db_password is defined
+          - vault_jwt_secret is defined
+        fail_msg: >-
+          Set db_host in group_vars/all/main.yml and provide vault_db_password /
+          vault_jwt_secret (see group_vars/all/vault.yml.example).
+      tags: [always]
+
+  roles:
+    - role: common
+      tags: [common]
+    - role: docker
+      tags: [docker]
+    - role: security
+      tags: [security]
+    - role: app
+      tags: [app, deploy]

@@ -1,0 +1,27 @@
+---
+app_repo_url: "https://github.com/anselme-alu/smart-umuganda-alu-devops-formative.git"
+app_repo_branch: "main"
+app_dir: /opt/smart-umuganda
+
+app_frontend_port: 80
+app_backend_port: 8000
+
+app_public_endpoint: "{{ ansible_host }}"
+
+db_host: "smart-umuganda-dev-postgres.c8pyi8ceu5m0.us-east-1.rds.amazonaws.com"
+db_port: 5432
+db_name: "smart_umuganda"
+db_user: "umuganda_admin"
+
+database_url: "postgres://{{ db_user }}:{{ db_password }}@{{ db_host }}:{{ db_port }}/{{ db_name }}?sslmode=no-verify"
+
+db_password: "{{ vault_db_password }}"
+jwt_secret: "{{ vault_jwt_secret }}"
+
+ssh_port: 22
+firewall_allowed_tcp_ports:
+  - "{{ ssh_port }}"
+  - "{{ app_frontend_port }}"
+  - "{{ app_backend_port }}"
+
+swap_file_size_mb: 2048

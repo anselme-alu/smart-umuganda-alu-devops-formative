@@ -1,0 +1,51 @@
+---
+- name: Update apt cache
+  ansible.builtin.apt:
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Install base packages
+  ansible.builtin.apt:
+    name:
+      - ca-certificates
+      - curl
+      - git
+      - gnupg
+      - acl
+    state: present
+
+# Swap prevents OOM during on-host Docker builds on small instances.
+- name: Create swap file
+  ansible.builtin.command:
+    cmd: "fallocate -l {{ swap_file_size_mb }}M /swapfile"
+    creates: /swapfile
+  register: common_swap_created
+
+- name: Secure swap file permissions
+  ansible.builtin.file:
+    path: /swapfile
+    owner: root
+    group: root
+    mode: "0600"
+
+- name: Format swap file
+  ansible.builtin.command:
+    cmd: mkswap /swapfile
+  when: common_swap_created.changed # noqa: no-handler
+  changed_when: true
+
+- name: Persist swap in fstab
+  ansible.builtin.lineinfile:
+    path: /etc/fstab
+    line: "/swapfile none swap sw 0 0"
+    state: present
+
+- name: Activate swap
+  ansible.builtin.command:
+    cmd: swapon /swapfile
+  when: common_swap_created.changed # noqa: no-handler
+  register: common_swapon_result
+  changed_when: common_swapon_result.rc == 0
+  failed_when:
+    - common_swapon_result.rc != 0
+    - "'already active' not in common_swapon_result.stderr"
