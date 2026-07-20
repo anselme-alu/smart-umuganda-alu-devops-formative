@@ -15,6 +15,8 @@ RUN yarn build
 # Stage 2 — lean production image
 FROM node:24-alpine
 
+RUN apk upgrade --no-cache
+
 # Run as a dedicated non-root user (security best practice)
 RUN addgroup -g 1001 -S appgroup && \
     adduser -S appuser -u 1001 -G appgroup
@@ -26,6 +28,8 @@ COPY --from=builder /app/drizzle ./drizzle
 COPY package.json yarn.lock ./
 
 RUN yarn install --production --frozen-lockfile && \
+    yarn cache clean && \
+    rm -rf /root/.cache /usr/local/share/.cache/yarn && \
     chown -R appuser:appgroup /app
 
 USER appuser

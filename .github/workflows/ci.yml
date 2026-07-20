@@ -131,6 +131,7 @@ jobs:
           exit-code: "1"
           ignore-unfixed: true
           severity: CRITICAL,HIGH
+          trivy-args: --pkg-types os
 
       - name: Scan frontend image with Trivy
         if: github.event_name == 'pull_request'
@@ -142,6 +143,7 @@ jobs:
           exit-code: "1"
           ignore-unfixed: true
           severity: CRITICAL,HIGH
+          trivy-args: --pkg-types os
 
   dependency-scan:
     name: Dependency Scan
