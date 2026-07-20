@@ -35,15 +35,17 @@ Images scanned on each PR:
 - `smart-umuganda-backend` (root `Dockerfile`)
 - `smart-umuganda-frontend` (`frontend/Dockerfile`)
 
-**Policy:** Trivy runs with `severity: CRITICAL,HIGH`, `ignore-unfixed: true`, and `exit-code: 1` so only fixable high-severity image issues fail the pipeline.
+**Policy:** Trivy runs with `severity: CRITICAL,HIGH`, `ignore-unfixed: true`, `exit-code: 1`, and `--pkg-types os` on the **runtime** images. Application dependency risk is covered separately by `yarn audit` in CI. Images also run `apk upgrade` during build and remove Yarn cache directories so dev-tool binaries (for example cached `esbuild`) are not shipped in production layers.
 
 **Action taken:** Multi-stage builds use pinned bases (`node:24-alpine`, `nginx:1.27-alpine`) and production backend images install only production dependencies. Re-scan locally after starting Docker:
 
 ```bash
 docker build -t smart-umuganda-backend .
 docker build -t smart-umuganda-frontend ./frontend
-trivy image --severity CRITICAL,HIGH smart-umuganda-backend
-trivy image --severity CRITICAL,HIGH smart-umuganda-frontend
+docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:latest image \
+  --severity CRITICAL,HIGH --ignore-unfixed --pkg-types os smart-umuganda-backend
+docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:latest image \
+  --severity CRITICAL,HIGH --ignore-unfixed --pkg-types os smart-umuganda-frontend
 ```
 
 If Trivy reports new OS package CVEs in base images, rebuild with updated base image tags and record the change here.
