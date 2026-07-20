@@ -21,7 +21,7 @@ Lint, unit tests, and Docker build jobs still run on feature-branch pushes and o
 | Backend | Moderate | `esbuild` (via `drizzle-kit` → dev toolchain) | **Accepted risk** — dev-only dependency; does not ship in production runtime. CI fails only on **high** and **critical** so this does not block merges. Track upstream `drizzle-kit` / `esbuild` updates. |
 | Frontend | — | No high/critical advisories at last scan | **Clear** |
 
-**Action taken:** Pipeline uses `yarn audit --level high` so moderate dev-tooling issues are documented here without blocking delivery. Re-run locally:
+**Action taken:** CI parses `yarn audit --json` and fails only when **high** or **critical** counts are non-zero (Yarn classic can exit non-zero for moderate-only findings). Re-run locally:
 
 ```bash
 cd backend && yarn audit
@@ -52,7 +52,7 @@ If Trivy reports new OS package CVEs in base images, rebuild with updated base i
 
 Terraform under [`terraform/`](./terraform/) is scanned with tfsec on each pull request (`--minimum-severity HIGH`).
 
-**Action taken:** Findings at HIGH and above are reviewed in PRs. tfsec is configured with `soft_fail: true` so results are visible in CI logs while the team prioritizes fixes (for example tightening security groups or enabling encryption flags) without hiding lower-priority guidance.
+**Action taken:** tfsec is configured with `soft_fail: true` so results are visible in CI logs while the team prioritizes fixes. Current HIGH findings: **public subnet** (`map_public_ip_on_launch = true`) on two public subnets in `terraform/modules/network/main.tf` — intentional for this lab architecture (internet-facing tier); review before production hardening.
 
 Re-run locally:
 
