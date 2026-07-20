@@ -144,10 +144,10 @@ GitHub Actions runs on every push to feature branches and on pull requests targe
 
 | Workflow   | Trigger                              | What it does                                           |
 | ---------- | ------------------------------------ | ------------------------------------------------------ |
-| `ci.yml`   | Push (except `main`), PR → `main`    | Lint, test, and build Docker images for backend + frontend |
+| `ci.yml`   | Push (except `main`), PR → `main`    | Lint, test, Docker build; on PRs also dependency, Trivy, and tfsec scans |
 | `main.yaml`| Push to `main`                       | CD placeholder (deployment coming soon)                |
 
-The CI pipeline fails if linting, tests, or Docker builds fail.
+The CI pipeline fails if linting, tests, Docker builds, or **high-severity security scans** fail. See [`SECURITY.md`](./SECURITY.md) for scan details and documented findings.
 
 ## Links
 
