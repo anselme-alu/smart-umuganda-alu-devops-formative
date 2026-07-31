@@ -37,7 +37,9 @@ export default function LoginPage() {
         <div className="card-body">
           <div className="text-center mb-4">
             <h1 className="text-3xl font-bold text-primary">Smart Umuganda</h1>
-            <p className="text-base-content/60 mt-1">Sign in to your account</p>
+            <p className="text-base-content/60 mt-1">
+              Sign in to your account [updated]
+            </p>
           </div>
 
           {error && (
