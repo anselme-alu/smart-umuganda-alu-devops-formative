@@ -1,7 +1,6 @@
 import "dotenv/config";
 import { readFileSync } from "node:fs";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
+import { join } from "node:path";
 import cors from "cors";
 import express from "express";
 import authRouter from "./routes/auth";
@@ -11,7 +10,7 @@ import usersRouter from "./routes/users";
 import issuesRouter from "./routes/issues";
 import announcementsRouter from "./routes/announcements";
 
-const packageRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
+const packageRoot = join(__dirname, "..");
 const serviceVersion = (() => {
   try {
     const pkg = JSON.parse(
