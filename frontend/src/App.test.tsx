@@ -16,7 +16,9 @@ describe("App", () => {
   it("redirects to login page when not authenticated", async () => {
     render(<App />);
     await waitFor(() => {
-      expect(screen.getByText("Sign in to your account")).toBeInTheDocument();
+      expect(
+        screen.getByText("Sign in to your account [updated]"),
+      ).toBeInTheDocument();
     });
   });
 

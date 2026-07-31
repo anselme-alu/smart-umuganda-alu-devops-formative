@@ -44,7 +44,9 @@ describe("LoginPage", () => {
   it("renders heading and form fields", () => {
     renderLogin();
     expect(screen.getByText("Smart Umuganda")).toBeInTheDocument();
-    expect(screen.getByText("Sign in to your account")).toBeInTheDocument();
+    expect(
+      screen.getByText("Sign in to your account [updated]"),
+    ).toBeInTheDocument();
     expect(screen.getByPlaceholderText("you@example.com")).toBeInTheDocument();
     expect(screen.getByPlaceholderText("••••••••")).toBeInTheDocument();
     expect(
