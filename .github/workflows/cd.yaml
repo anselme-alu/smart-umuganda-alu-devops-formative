@@ -369,27 +369,16 @@ jobs:
       API_URL: ${{ needs.terraform.outputs.api_url }}
       INSTANCE_IP: ${{ needs.terraform.outputs.instance_ip }}
     steps:
-      - name: Check the backend health endpoint
-        run: |
-          set -euo pipefail
-          for attempt in $(seq 1 10); do
-            if curl -fsS --max-time 10 "http://${INSTANCE_IP}:8000/health"; then
-              echo ""
-              echo "Backend healthy."
-              exit 0
-            fi
-            echo "Attempt ${attempt}/10 failed, retrying in 10s..."
-            sleep 10
-          done
-          echo "::error::Backend health check failed."
-          exit 1
+      - name: Checkout code
+        uses: actions/checkout@v7
 
-      - name: Check the frontend responds
+      - name: Run smoke test
         run: |
-          set -euo pipefail
-          status="$(curl -sS -o /dev/null -w '%{http_code}' --max-time 15 "$APPLICATION_URL")"
-          echo "Frontend returned HTTP $status"
-          [[ "$status" == "200" ]]
+          chmod +x scripts/smoke-test.sh
+          INSTANCE_IP="${INSTANCE_IP}" \
+          APPLICATION_URL="${APPLICATION_URL}" \
+          API_URL="${API_URL}" \
+          ./scripts/smoke-test.sh
 
       - name: Summarise the deployment
         run: |

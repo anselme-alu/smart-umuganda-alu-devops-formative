@@ -19,7 +19,7 @@ The playbook (`site.yml`) is organised into four **roles**, applied in order:
 | `common` | Base packages (`git`, `curl`, …) and a swap file so low-memory builds don't OOM |
 | `docker` | Installs Docker Engine + Compose plugin from Docker's official apt repo; enables the service |
 | `security` | **UFW** firewall (default-deny inbound, allow 22/80/8000), **SSH hardening** (key-only, no root, limited retries), plus **fail2ban** and **unattended-upgrades** |
-| `app` | Clones the repo, renders `.env` + a compose file, builds and runs the backend + frontend containers against RDS, and waits for health checks to pass |
+| `app` | Clones the repo, renders `.env` + a compose file, builds and runs the backend + frontend containers against RDS, then runs [`../scripts/smoke-test.sh`](../scripts/smoke-test.sh) on localhost to verify the stack |
 
 Everything is **idempotent** — re-running the playbook converges the server to
 the desired state without unnecessary changes.

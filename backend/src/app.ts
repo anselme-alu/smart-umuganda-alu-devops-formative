@@ -1,4 +1,7 @@
 import "dotenv/config";
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import cors from "cors";
 import express from "express";
 import authRouter from "./routes/auth";
@@ -7,6 +10,19 @@ import locationsRouter from "./routes/locations";
 import usersRouter from "./routes/users";
 import issuesRouter from "./routes/issues";
 import announcementsRouter from "./routes/announcements";
+
+const packageRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
+const serviceVersion = (() => {
+  try {
+    const pkg = JSON.parse(
+      readFileSync(join(packageRoot, "package.json"), "utf8"),
+    ) as { version?: string };
+    return pkg.version ?? "unknown";
+  } catch {
+    return "unknown";
+  }
+})();
+const startedAt = Date.now();
 
 export const app = express();
 
@@ -19,7 +35,12 @@ app.use(
 app.use(express.json());
 
 app.get("/health", (_req, res) => {
-  res.json({ ok: true });
+  res.json({
+    ok: true,
+    service: "smart-umuganda-api",
+    version: serviceVersion,
+    uptimeSeconds: Math.floor((Date.now() - startedAt) / 1000),
+  });
 });
 
 app.use("/api/auth", authRouter);

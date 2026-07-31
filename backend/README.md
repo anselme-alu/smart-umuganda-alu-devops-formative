@@ -45,6 +45,27 @@ yarn dev
 
 The server starts on `http://localhost:8000` by default. Set the `PORT` environment variable to change it.
 
+## Health check
+
+`GET /health` is used by Docker, Ansible, GitHub Actions CD, and `make smoke-test` to confirm the API is running.
+
+**Example response:**
+
+```json
+{
+  "ok": true,
+  "service": "smart-umuganda-api",
+  "version": "1.0.0",
+  "uptimeSeconds": 42
+}
+```
+
+```bash
+curl -fsS http://localhost:8000/health
+```
+
+The endpoint intentionally avoids hitting the database so it stays a fast **liveness** probe. A `200` response with `"ok": true` is enough for load balancers and smoke tests.
+
 ## Testing
 
 Tests use [Vitest](https://vitest.dev/). Test files live alongside source files with the `.test.ts` suffix.

@@ -1,5 +1,7 @@
 # Smart Umuganda
 
+[![Pipeline](https://github.com/anselme-alu/smart-umuganda-alu-devops-formative/actions/workflows/main.yaml/badge.svg)](https://github.com/anselme-alu/smart-umuganda-alu-devops-formative/actions/workflows/main.yaml)
+
 > Connecting communities through digital civic engagement.
 
 ## African Context
@@ -39,12 +41,136 @@ On the frontend, a React 19 single-page application provides an intuitive interf
 
 ## Technology Stack
 
-| Layer    | Technology                     |
-| -------- | ------------------------------ |
-| Frontend | React 19, Tailwind CSS, Vite   |
-| Backend  | Node.js, Express 5, TypeScript |
-| Database | PostgreSQL 16, Drizzle ORM     |
-| DevOps   | GitHub Actions, Docker         |
+| Layer        | Technology                                      |
+| ------------ | ----------------------------------------------- |
+| Frontend     | React 19, Tailwind CSS, Vite                    |
+| Backend      | Node.js, Express 5, TypeScript                  |
+| Database     | PostgreSQL 16, Drizzle ORM                      |
+| Infra (IaC)  | Terraform, AWS (VPC, EC2, RDS, EIP)             |
+| Config mgmt  | Ansible                                         |
+| DevOps       | GitHub Actions, Docker, Docker Compose          |
+
+## Live application
+
+The summative deployment is running on AWS:
+
+| Resource | URL |
+| -------- | --- |
+| **Application (frontend)** | [http://98.91.144.193](http://98.91.144.193) |
+| **Login** | [http://98.91.144.193/auth/login](http://98.91.144.193/auth/login) |
+| **API (backend)** | [http://98.91.144.193:8000](http://98.91.144.193:8000) |
+
+Register a citizen account from the login page, or use seeded leader/admin credentials (see [backend/README.md](./backend/README.md)).
+
+## Architecture
+
+### Production (AWS)
+
+Terraform provisions the network, compute, and database. Ansible configures the EC2 host and runs the containerized application against RDS.
+
+```mermaid
+flowchart TB
+    subgraph Internet
+        User[Browser / API client]
+    end
+
+    subgraph AWS["AWS — us-east-1"]
+        subgraph VPC["VPC 10.0.0.0/16"]
+            IGW[Internet Gateway]
+
+            subgraph Public["Public subnets"]
+                EC2["EC2 + Elastic IP<br/>Docker Compose<br/>frontend :80 · backend :8000"]
+            end
+
+            subgraph Private["Private subnets"]
+                RDS[(RDS PostgreSQL 16<br/>encrypted · no public access)]
+            end
+        end
+    end
+
+    User -->|HTTP :80 / :8000| IGW
+    IGW --> EC2
+    EC2 -->|5432| RDS
+```
+
+| Component | Role |
+| --------- | ---- |
+| **EC2** | Runs nginx (frontend) and Express API (backend) as Docker containers |
+| **RDS** | Managed PostgreSQL; reachable only from the application security group |
+| **Security groups** | World → 80/8000 on app tier; app tier → 5432 on database tier |
+| **Elastic IP** | Stable public address for the deployed application |
+
+See [`terraform/README.md`](./terraform/README.md) and [`ansible/README.md`](./ansible/README.md) for module and playbook details.
+
+### CI/CD pipeline
+
+Every push and pull request runs CI. A merge to `main` that passes CI triggers continuous delivery.
+
+```mermaid
+flowchart LR
+    subgraph Triggers
+        Push[Push / PR]
+        Main[Merge to main]
+    end
+
+    subgraph CI["ci.yml"]
+        Lint[Lint]
+        Test[Test]
+        TFVal[Terraform validate]
+        Docker[Docker build]
+        SecPR[PR-only: audit · Trivy · tfsec]
+    end
+
+    subgraph CD["cd.yaml"]
+        TF[Terraform apply]
+        Ansible[Ansible deploy]
+        Smoke[Smoke test]
+    end
+
+    Push --> CI
+    Main --> CI
+    CI -->|all jobs pass| CD
+    TF --> Ansible --> Smoke
+    Smoke --> Live[(Live app<br/>98.91.144.193)]
+```
+
+### Local development
+
+For day-to-day feature work, run Postgres in Docker and start the apps with Yarn:
+
+```mermaid
+flowchart LR
+    Dev[Developer machine]
+    DB[(Postgres<br/>docker-compose.db.yml)]
+    BE[Backend<br/>yarn dev :8000]
+    FE[Frontend<br/>yarn dev :5173]
+
+    Dev --> DB
+    Dev --> BE
+    Dev --> FE
+    FE --> BE
+    BE --> DB
+```
+
+Alternatively, run the **full containerized stack** locally:
+
+```bash
+docker compose -f docker-compose.yml up --build
+# or
+make docker-up
+```
+
+### Operations shortcuts
+
+The root [`Makefile`](./Makefile) wraps common tasks:
+
+| Command | Purpose |
+| ------- | ------- |
+| `make smoke-test` | Hit `/health` and the frontend on the live deployment (override with `APPLICATION_URL=...`) |
+| `make docker-up` / `make docker-down` | Start or stop the full Compose stack |
+| `make ci-backend` / `make ci-frontend` | Run the same lint + test steps as CI locally |
+
+The CD pipeline reuses [`scripts/smoke-test.sh`](./scripts/smoke-test.sh) after Ansible deploys to AWS.
 
 ## Getting Started
 
@@ -97,13 +223,19 @@ Open [http://localhost:5173](http://localhost:5173) in your browser. Register an
 smart-umuganda/
 ├── backend/               # Express API — Dockerfile, .dockerignore, README.md
 ├── frontend/              # React app  — Dockerfile, .dockerignore, README.md
+├── terraform/             # AWS infrastructure (VPC, EC2, RDS)
+├── ansible/               # Server config & application deployment
 ├── .github/
-│   └── workflows/         # CI/CD pipelines
+│   └── workflows/         # CI/CD pipelines (ci.yml, cd.yaml, main.yaml)
 ├── Dockerfile             # Root backend container configuration
 ├── docker-compose.yml     # Full stack: database + backend + frontend
 ├── docker-compose.yaml    # Alias of docker-compose.yml
 ├── docker-compose.db.yml  # Database only (for local dev)
-├── Makefile
+├── scripts/
+│   └── smoke-test.sh      # Post-deploy verification (used by CD + make smoke-test)
+├── Makefile               # Local ops shortcuts (docker, CI, smoke test)
+├── CHANGELOG.md           # F1 → F2 → Summative evolution
+├── SECURITY.md            # CI security scan policy & findings
 └── README.md
 ```
 
@@ -199,9 +331,14 @@ Settings → Secrets and variables → Actions → **Variables** (all optional, 
 
 ## Links
 
+- **Live app:** [http://98.91.144.193](http://98.91.144.193)
+- [CHANGELOG.md](./CHANGELOG.md) — F1, F2, and Summative evolution
+- [SECURITY.md](./SECURITY.md) — CI security scanning
 - [Project Board](https://github.com/users/anselme-alu/projects/1)
 - [Backend Documentation](./backend/README.md)
 - [Frontend Documentation](./frontend/README.md)
+- [Terraform Documentation](./terraform/README.md)
+- [Ansible Documentation](./ansible/README.md)
 - [Team collaboration sheet](https://docs.google.com/spreadsheets/d/1DSzKnZjLoce4OMATBgfHCLmnEqlwf7LKUY_8CONuzs8/edit?usp=sharing)
 
 ## License
