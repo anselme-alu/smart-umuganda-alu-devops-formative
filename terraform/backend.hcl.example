@@ -1,0 +1,12 @@
+# Copy to backend.hcl and fill in, then:
+#   terraform init -backend-config=backend.hcl
+#
+# These must match what the CD pipeline uses, otherwise your local runs and CI
+# will operate on two different states. The pipeline derives them as:
+#   bucket = <TF_STATE_BUCKET variable>  (default: smart-umuganda-tfstate-<aws-account-id>)
+#   key    = <project_name>/<environment>/terraform.tfstate
+#   region = <AWS_REGION variable>       (default: us-east-1)
+
+bucket = "smart-umuganda-tfstate-123456789012"
+key    = "smart-umuganda/dev/terraform.tfstate"
+region = "us-east-1"

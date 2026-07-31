@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router";
 import { AlertTriangle } from "lucide-react";
 import Layout from "../../components/Layout";
 import api from "../../api/client";

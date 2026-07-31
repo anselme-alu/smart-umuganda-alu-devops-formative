@@ -155,6 +155,24 @@ Terraform owns **infrastructure**; Ansible owns **configuration + deployment**.
 Re-run the playbook any time you push new code — it pulls the latest commit,
 rebuilds the images, and rolls the containers.
 
+## Running from CI
+
+[`.github/workflows/cd.yaml`](../.github/workflows/cd.yaml) runs this playbook
+automatically after `terraform apply`. It does not use `vault.yml` or a static
+inventory — instead it:
+
+- builds the inventory from Terraform's `instance_public_ip` output;
+- reads `db_address`, `db_name`, `db_username` and `db_password` from remote state
+  and passes them (plus `vault_jwt_secret` from the `JWT_SECRET` GitHub secret) as
+  extra variables written to a file, so no secret reaches the process list or logs;
+- pins `app_repo_branch` to the exact commit SHA being deployed, so the host checks
+  out the same code that triggered the pipeline.
+
+Vault is therefore only needed for manual runs from a workstation.
+
+> The `app` role clones the repository **on the instance**. If you make this
+> repository private, give the host a deploy key or pass a token in `app_repo_url`.
+
 ---
 
 ## Security hardening applied

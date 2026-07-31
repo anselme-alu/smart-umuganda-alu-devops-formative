@@ -1,10 +1,52 @@
 ---
+# An earlier bootstrap cloned the repo with `--depth 1 --branch main`, which
+# leaves the remote configured to fetch *only* main and the history truncated.
+# Deploying any other commit then fails with "reference is not a tree", because
+# the object is simply never fetched. These tasks repair such a clone in place;
+# on a healthy clone they are all skipped.
+- name: Look for an existing clone
+  ansible.builtin.stat:
+    path: "{{ app_dir }}/.git"
+  register: app_repo_git
+
+- name: Read the configured fetch refspec
+  ansible.builtin.command:
+    cmd: git config --get-all remote.origin.fetch
+    chdir: "{{ app_dir }}"
+  register: app_repo_refspec
+  changed_when: false
+  failed_when: false
+  when: app_repo_git.stat.exists
+
+- name: Widen the fetch refspec to every branch
+  ansible.builtin.command:
+    cmd: git config --replace-all remote.origin.fetch "+refs/heads/*:refs/remotes/origin/*"
+    chdir: "{{ app_dir }}"
+  when:
+    - app_repo_git.stat.exists
+    - "'+refs/heads/*:refs/remotes/origin/*' not in (app_repo_refspec.stdout_lines | default([]))"
+
+- name: Check whether the clone is shallow
+  ansible.builtin.stat:
+    path: "{{ app_dir }}/.git/shallow"
+  register: app_repo_shallow
+  when: app_repo_git.stat.exists
+
+- name: Convert a shallow clone into a full one
+  ansible.builtin.command:
+    cmd: git fetch --unshallow --tags origin
+    chdir: "{{ app_dir }}"
+  when: app_repo_shallow.stat.exists | default(false)
+
 - name: Clone/update the application repository
   ansible.builtin.git:
     repo: "{{ app_repo_url }}"
     dest: "{{ app_dir }}"
     version: "{{ app_repo_branch }}"
     force: true
+    # Required when `version` is a commit SHA rather than a branch or tag —
+    # without it the SHA may not be part of anything fetched.
+    refspec: "+refs/heads/*:refs/remotes/origin/*"
 
 - name: Render the environment file
   ansible.builtin.template:

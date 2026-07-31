@@ -12,10 +12,14 @@ crash.*.log
 *.tfvars.json
 !*.tfvars.example
 
+# Backend configuration is environment-specific. The example file is allowed.
+backend.hcl
+
 # CLI config / plan artifacts
 .terraformrc
 terraform.rc
 *.tfplan
+tfplan
 
 # SSH keys generated for the demo
 *.pem

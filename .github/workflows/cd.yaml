@@ -1,13 +1,405 @@
 name: CD
 
-on:
-  workflow_call:
+# Continuous Delivery: Terraform provisions the AWS infrastructure, Ansible
+# configures the host and deploys the containerized application, then the
+# pipeline smoke-tests the live endpoints.
+#
+# Runs when:
+#   * main.yaml calls it — a push to main whose CI passed -> apply + deploy
+#   * manually, via "Run workflow"                        -> you pick the action
+#
+# There is no branch or commit-message logic here: whether to deploy is decided
+# by the caller, and what to do is decided by `action`. To skip a deployment,
+# put [skip ci] in the commit message — that skips the whole pipeline.
 
-# CD pipeline — not yet configured.
-# Add deployment jobs here (e.g. build Docker image, push to registry, deploy to cloud).
+on:
+  # Called by .github/workflows/main.yaml, which only invokes it after CI has
+  # passed on a push to main. The defaults below are that path.
+  workflow_call:
+    inputs:
+      action:
+        description: "Terraform action to run: apply, plan or destroy"
+        type: string
+        default: apply
+      skip_ansible:
+        description: "Provision infrastructure only (skip the Ansible deploy)"
+        type: boolean
+        default: false
+  workflow_dispatch:
+    inputs:
+      action:
+        description: "Terraform action to run"
+        type: choice
+        options: [apply, plan, destroy]
+        default: apply
+      skip_ansible:
+        description: "Provision infrastructure only (skip the Ansible deploy)"
+        type: boolean
+        default: false
+
+# One deployment at a time — the whole repository shares a single Terraform
+# state, so concurrent runs would fight over the state lock.
+concurrency:
+  group: cd-${{ github.repository }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  TF_VERSION: "1.15.7"
+  ANSIBLE_VERSION: "2.18.*"
+  AWS_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
+  TF_PROJECT_NAME: ${{ vars.TF_PROJECT_NAME || 'smart-umuganda' }}
+  TF_ENVIRONMENT: ${{ vars.TF_ENVIRONMENT || 'dev' }}
+  TF_IN_AUTOMATION: "true"
+  TF_INPUT: "false"
+
 jobs:
-  placeholder:
+  # ---------------------------------------------------------------------------
+  # 1. Provision / update / destroy the infrastructure.
+  # ---------------------------------------------------------------------------
+  terraform:
+    name: Terraform ${{ inputs.action }}
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: terraform
+    outputs:
+      instance_ip: ${{ steps.tf_outputs.outputs.instance_ip }}
+      db_address: ${{ steps.tf_outputs.outputs.db_address }}
+      application_url: ${{ steps.tf_outputs.outputs.application_url }}
+      api_url: ${{ steps.tf_outputs.outputs.api_url }}
+    env:
+      TF_ACTION: ${{ inputs.action }}
+      # Every input the configuration needs — terraform.tfvars is git-ignored,
+      # so CI is driven entirely by TF_VAR_* environment variables. Defaults
+      # match terraform/terraform.tfvars.example so CI never drifts from local.
+      TF_VAR_aws_region: ${{ vars.AWS_REGION || 'us-east-1' }}
+      TF_VAR_project_name: ${{ vars.TF_PROJECT_NAME || 'smart-umuganda' }}
+      TF_VAR_environment: ${{ vars.TF_ENVIRONMENT || 'dev' }}
+      TF_VAR_instance_type: ${{ vars.TF_INSTANCE_TYPE || 't3.micro' }}
+      TF_VAR_db_instance_class: ${{ vars.TF_DB_INSTANCE_CLASS || 'db.t3.micro' }}
+      TF_VAR_ssh_allowed_cidr: ${{ vars.SSH_ALLOWED_CIDR || '0.0.0.0/0' }}
+      TF_VAR_ssh_public_key: ${{ secrets.SSH_PUBLIC_KEY }}
+      # Optional: leave the secret unset to let Terraform generate a strong
+      # password once and keep it in remote state.
+      TF_VAR_db_password: ${{ secrets.DB_PASSWORD }}
     steps:
-      - name: CD not yet configured
-        run: echo "CD pipeline coming soon"
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Validate required secrets
+        env:
+          SSH_PUBLIC_KEY: ${{ secrets.SSH_PUBLIC_KEY }}
+        run: |
+          set -euo pipefail
+          if [[ "$TF_ACTION" != "destroy" && -z "$SSH_PUBLIC_KEY" ]]; then
+            echo "::error::Secret SSH_PUBLIC_KEY is not set. Without it Terraform would" \
+                 "delete the key pair and replace the EC2 instance, and Ansible could not" \
+                 "connect. Set it to the contents of terraform/smart-umuganda-key.pub."
+            exit 1
+          fi
+
+      - name: Configure AWS credentials (access keys)
+        if: vars.AWS_ROLE_TO_ASSUME == ''
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Ensure the remote state bucket exists
+        env:
+          TF_STATE_BUCKET_OVERRIDE: ${{ vars.TF_STATE_BUCKET }}
+        run: |
+          set -euo pipefail
+          account_id="$(aws sts get-caller-identity --query Account --output text)"
+          bucket="${TF_STATE_BUCKET_OVERRIDE:-${TF_PROJECT_NAME}-tfstate-${account_id}}"
+          echo "TF_STATE_BUCKET=$bucket" >> "$GITHUB_ENV"
+
+          if aws s3api head-bucket --bucket "$bucket" 2>/dev/null; then
+            echo "State bucket already present."
+            exit 0
+          fi
+
+          echo "Creating state bucket in $AWS_REGION ..."
+          if [[ "$AWS_REGION" == "us-east-1" ]]; then
+            aws s3api create-bucket --bucket "$bucket" --region us-east-1
+          else
+            aws s3api create-bucket --bucket "$bucket" --region "$AWS_REGION" \
+              --create-bucket-configuration "LocationConstraint=$AWS_REGION"
+          fi
+          aws s3api put-bucket-versioning --bucket "$bucket" \
+            --versioning-configuration Status=Enabled
+          aws s3api put-bucket-encryption --bucket "$bucket" \
+            --server-side-encryption-configuration \
+            '{"Rules":[{"ApplyServerSideEncryptionByDefault":{"SSEAlgorithm":"AES256"},"BucketKeyEnabled":true}]}'
+          aws s3api put-public-access-block --bucket "$bucket" \
+            --public-access-block-configuration \
+            "BlockPublicAcls=true,IgnorePublicAcls=true,BlockPublicPolicy=true,RestrictPublicBuckets=true"
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+          terraform_wrapper: false
+
+      - name: Terraform init
+        run: |
+          terraform init -reconfigure \
+            -backend-config="bucket=${TF_STATE_BUCKET}" \
+            -backend-config="key=${TF_PROJECT_NAME}/${TF_ENVIRONMENT}/terraform.tfstate" \
+            -backend-config="region=${AWS_REGION}"
+
+      - name: Terraform format check
+        run: terraform fmt -check -recursive
+
+      - name: Terraform validate
+        run: terraform validate -no-color
+
+      - name: Terraform plan
+        run: |
+          set -euo pipefail
+          if [[ "$TF_ACTION" == "destroy" ]]; then
+            terraform plan -destroy -no-color -lock-timeout=5m -out=tfplan
+          else
+            terraform plan -no-color -lock-timeout=5m -out=tfplan
+          fi
+          terraform show -no-color tfplan > plan.txt
+
+      - name: Publish the plan to the job summary
+        run: |
+          {
+            echo "## Terraform plan (\`$TF_ACTION\`)"
+            echo ""
+            echo '```hcl'
+            head -c 50000 plan.txt
+            echo ''
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Terraform ${{ inputs.action }}
+        if: inputs.action != 'plan'
+        run: terraform apply -auto-approve -no-color -lock-timeout=5m tfplan
+
+      - name: Collect outputs
+        id: tf_outputs
+        if: inputs.action == 'apply'
+        run: |
+          set -euo pipefail
+          {
+            echo "instance_ip=$(terraform output -raw instance_public_ip)"
+            echo "db_address=$(terraform output -raw db_address)"
+            echo "application_url=$(terraform output -raw application_url)"
+            echo "api_url=$(terraform output -raw api_url)"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Summarise the infrastructure
+        if: inputs.action == 'apply'
+        run: |
+          {
+            echo "## Infrastructure"
+            echo ""
+            echo "| Output | Value |"
+            echo "|---|---|"
+            echo "| Instance IP | \`${{ steps.tf_outputs.outputs.instance_ip }}\` |"
+            echo "| Database host | \`${{ steps.tf_outputs.outputs.db_address }}\` |"
+            echo "| Application | ${{ steps.tf_outputs.outputs.application_url }} |"
+            echo "| API | ${{ steps.tf_outputs.outputs.api_url }} |"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  # ---------------------------------------------------------------------------
+  # 2. Configure the host and roll out the application.
+  # ---------------------------------------------------------------------------
+  deploy:
+    name: Deploy application (Ansible)
+    needs: terraform
+    if: inputs.action == 'apply' && !inputs.skip_ansible
+    runs-on: ubuntu-latest
+    env:
+      INSTANCE_IP: ${{ needs.terraform.outputs.instance_ip }}
+      DB_ADDRESS: ${{ needs.terraform.outputs.db_address }}
+      ANSIBLE_FORCE_COLOR: "1"
+      ANSIBLE_HOST_KEY_CHECKING: "False"
+      ANSIBLE_PRIVATE_KEY_FILE: ${{ github.workspace }}/.ssh-deploy-key
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Configure AWS credentials (access keys)
+        if: vars.AWS_ROLE_TO_ASSUME == ''
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+          terraform_wrapper: false
+
+      - name: Read the database credentials from remote state
+        working-directory: terraform
+        env:
+          TF_STATE_BUCKET_OVERRIDE: ${{ vars.TF_STATE_BUCKET }}
+        run: |
+          set -euo pipefail
+          account_id="$(aws sts get-caller-identity --query Account --output text)"
+          bucket="${TF_STATE_BUCKET_OVERRIDE:-${TF_PROJECT_NAME}-tfstate-${account_id}}"
+
+          terraform init -reconfigure \
+            -backend-config="bucket=${bucket}" \
+            -backend-config="key=${TF_PROJECT_NAME}/${TF_ENVIRONMENT}/terraform.tfstate" \
+            -backend-config="region=${AWS_REGION}"
+
+          db_password="$(terraform output -raw db_password)"
+          echo "::add-mask::$db_password"
+          echo "DB_PASSWORD=$db_password" >> "$GITHUB_ENV"
+          echo "DB_NAME=$(terraform output -raw db_name)" >> "$GITHUB_ENV"
+          echo "DB_USERNAME=$(terraform output -raw db_username)" >> "$GITHUB_ENV"
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Ansible and collections
+        working-directory: ansible
+        run: |
+          set -euo pipefail
+          python -m pip install --upgrade pip
+          pip install "ansible-core==${ANSIBLE_VERSION}" boto3
+          ansible-galaxy collection install -r requirements.yml
+
+      - name: Install the deploy SSH key
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+        run: |
+          set -euo pipefail
+          if [[ -z "$SSH_PRIVATE_KEY" ]]; then
+            echo "::error::Secret SSH_PRIVATE_KEY is not set — Ansible cannot reach the instance."
+            exit 1
+          fi
+          umask 077
+          printf '%s\n' "$SSH_PRIVATE_KEY" > "$ANSIBLE_PRIVATE_KEY_FILE"
+          chmod 600 "$ANSIBLE_PRIVATE_KEY_FILE"
+          ssh-keygen -y -f "$ANSIBLE_PRIVATE_KEY_FILE" > /dev/null
+
+      - name: Wait for SSH on the instance
+        run: |
+          set -euo pipefail
+          for attempt in $(seq 1 30); do
+            if ssh -i "$ANSIBLE_PRIVATE_KEY_FILE" \
+                   -o BatchMode=yes -o StrictHostKeyChecking=no \
+                   -o UserKnownHostsFile=/dev/null -o ConnectTimeout=10 \
+                   "ubuntu@${INSTANCE_IP}" true 2>/dev/null; then
+              echo "SSH is up after ${attempt} attempt(s)."
+              exit 0
+            fi
+            echo "Attempt ${attempt}/30 — instance not reachable yet, retrying in 10s..."
+            sleep 10
+          done
+          echo "::error::Timed out waiting for SSH on ${INSTANCE_IP}."
+          exit 1
+
+      - name: Build the inventory and variables
+        env:
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+        run: |
+          set -euo pipefail
+          if [[ -z "$JWT_SECRET" ]]; then
+            echo "::error::Secret JWT_SECRET is not set — the backend cannot sign tokens."
+            exit 1
+          fi
+
+          cat > "$RUNNER_TEMP/inventory.ini" <<EOF
+          [app]
+          smart-umuganda ansible_host=${INSTANCE_IP}
+
+          [app:vars]
+          ansible_user=ubuntu
+          EOF
+
+          # Written as a file (never as CLI arguments) so no secret can end up
+          # in the process list or the step log.
+          jq -n \
+            --arg db_host "$DB_ADDRESS" \
+            --arg db_name "$DB_NAME" \
+            --arg db_user "$DB_USERNAME" \
+            --arg db_password "$DB_PASSWORD" \
+            --arg jwt_secret "$JWT_SECRET" \
+            --arg endpoint "$INSTANCE_IP" \
+            --arg branch "$GITHUB_SHA" \
+            --arg repo_url "https://github.com/${GITHUB_REPOSITORY}.git" \
+            '{
+               db_host: $db_host,
+               db_name: $db_name,
+               db_user: $db_user,
+               vault_db_password: $db_password,
+               vault_jwt_secret: $jwt_secret,
+               app_public_endpoint: $endpoint,
+               app_repo_url: $repo_url,
+               app_repo_branch: $branch
+             }' > "$RUNNER_TEMP/extra_vars.json"
+          chmod 600 "$RUNNER_TEMP/extra_vars.json"
+
+      - name: Run the playbook
+        working-directory: ansible
+        run: |
+          ansible-playbook site.yml \
+            -i "$RUNNER_TEMP/inventory.ini" \
+            -e "@$RUNNER_TEMP/extra_vars.json"
+
+      - name: Remove the deploy credentials from the runner
+        if: always()
+        run: rm -f "$ANSIBLE_PRIVATE_KEY_FILE" "$RUNNER_TEMP/extra_vars.json"
+
+  # ---------------------------------------------------------------------------
+  # 3. Prove the deployment actually works from the outside.
+  # ---------------------------------------------------------------------------
+  verify:
+    name: Smoke test
+    needs: [terraform, deploy]
+    runs-on: ubuntu-latest
+    env:
+      APPLICATION_URL: ${{ needs.terraform.outputs.application_url }}
+      API_URL: ${{ needs.terraform.outputs.api_url }}
+      INSTANCE_IP: ${{ needs.terraform.outputs.instance_ip }}
+    steps:
+      - name: Check the backend health endpoint
+        run: |
+          set -euo pipefail
+          for attempt in $(seq 1 10); do
+            if curl -fsS --max-time 10 "http://${INSTANCE_IP}:8000/health"; then
+              echo ""
+              echo "Backend healthy."
+              exit 0
+            fi
+            echo "Attempt ${attempt}/10 failed, retrying in 10s..."
+            sleep 10
+          done
+          echo "::error::Backend health check failed."
+          exit 1
+
+      - name: Check the frontend responds
+        run: |
+          set -euo pipefail
+          status="$(curl -sS -o /dev/null -w '%{http_code}' --max-time 15 "$APPLICATION_URL")"
+          echo "Frontend returned HTTP $status"
+          [[ "$status" == "200" ]]
+
+      - name: Summarise the deployment
+        run: |
+          {
+            echo "## Deployment verified"
+            echo ""
+            echo "| | |"
+            echo "|---|---|"
+            echo "| Commit | \`${GITHUB_SHA:0:7}\` |"
+            echo "| Frontend | ${APPLICATION_URL} |"
+            echo "| API | ${API_URL} |"
+            echo "| Health | ${API_URL%/api}/health |"
+          } >> "$GITHUB_STEP_SUMMARY"

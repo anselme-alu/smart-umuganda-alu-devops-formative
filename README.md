@@ -140,14 +140,62 @@ Then open [http://localhost:5001](http://localhost:5001). The backend is availab
 
 ## CI/CD
 
-GitHub Actions runs on every push to feature branches and on pull requests targeting `main`.
-
-| Workflow   | Trigger                              | What it does                                           |
-| ---------- | ------------------------------------ | ------------------------------------------------------ |
-| `ci.yml`   | Push (except `main`), PR → `main`    | Lint, test, Docker build; on PRs also dependency, Trivy, and tfsec scans |
-| `main.yaml`| Push to `main`                       | CD placeholder (deployment coming soon)                |
+| Workflow  | Trigger                           | What it does                                                                             |
+| --------- | --------------------------------- | ---------------------------------------------------------------------------------------- |
+| `ci.yml`  | Push (except `main`), PR → `main` | Lint, test, Docker build, `terraform fmt`/`validate`; on PRs also dependency, Trivy and tfsec scans |
+| `cd.yaml` | Push to `main`, commit markers, manual dispatch | `terraform apply` → Ansible deploy → smoke test against the live URLs        |
 
 The CI pipeline fails if linting, tests, Docker builds, or **high-severity security scans** fail. See [`SECURITY.md`](./SECURITY.md) for scan details and documented findings.
+
+### Continuous delivery
+
+`cd.yaml` runs the full pipeline — infrastructure ([`terraform/`](./terraform)), configuration and deployment ([`ansible/`](./ansible)), then verification:
+
+```
+gate ──► terraform (fmt, validate, plan, apply) ──► deploy (Ansible) ──► verify (smoke test)
+```
+
+It triggers on:
+
+| Trigger                                              | Terraform action | Ansible deploy |
+| ---------------------------------------------------- | ---------------- | -------------- |
+| Push to `main`                                        | `apply`          | yes            |
+| Commit message contains `[terraform apply]` (any branch) | `apply`       | yes            |
+| Commit message contains `[terraform plan]` (any branch)  | `plan` only   | no             |
+| Commit message contains `[terraform destroy]` (any branch) | `destroy`   | no             |
+| Manual **Run workflow** (`workflow_dispatch`)         | your choice      | optional       |
+
+Opt-outs: `[skip cd]` disables the run entirely, `[skip ansible]` provisions infrastructure without redeploying the application.
+
+Every run publishes the Terraform plan, the resulting endpoints, and the smoke-test result to the workflow summary. Runs are serialized with a repository-wide concurrency group so two pushes can never fight over the Terraform state lock.
+
+### Required GitHub secrets
+
+Settings → Secrets and variables → Actions → **Secrets**:
+
+| Secret                  | Required                       | Value                                                                       |
+| ----------------------- | ------------------------------ | --------------------------------------------------------------------------- |
+| `AWS_ACCESS_KEY_ID`     | yes (unless using OIDC)        | Access key of the IAM user holding [`terraform/iam-policy.json`](./terraform/iam-policy.json) |
+| `AWS_SECRET_ACCESS_KEY` | yes (unless using OIDC)        | Matching secret access key                                                   |
+| `SSH_PUBLIC_KEY`        | yes                            | Contents of `terraform/smart-umuganda-key.pub` — installed on the instance   |
+| `SSH_PRIVATE_KEY`       | yes                            | Contents of `terraform/smart-umuganda-key` — used by Ansible to connect      |
+| `JWT_SECRET`            | yes                            | Long random string for the API (`openssl rand -hex 32`)                      |
+| `DB_PASSWORD`           | no                             | Pins the RDS master password; omit and Terraform generates one and keeps it in remote state |
+
+Settings → Secrets and variables → Actions → **Variables** (all optional, defaults shown):
+
+| Variable               | Default                                   | Purpose                                              |
+| ---------------------- | ----------------------------------------- | ---------------------------------------------------- |
+| `AWS_REGION`           | `us-east-1`                               | Region for every resource                            |
+| `TF_STATE_BUCKET`      | `smart-umuganda-tfstate-<account-id>`     | Remote state bucket (created automatically if absent) |
+| `TF_PROJECT_NAME`      | `smart-umuganda`                          | Resource name/tag prefix                             |
+| `TF_ENVIRONMENT`       | `dev`                                     | `dev` \| `staging` \| `prod`                          |
+| `TF_INSTANCE_TYPE`     | `t3.micro`                                | EC2 size                                             |
+| `TF_DB_INSTANCE_CLASS` | `db.t3.micro`                             | RDS size                                             |
+| `SSH_ALLOWED_CIDR`     | `0.0.0.0/0`                               | CIDR allowed to reach port 22                        |
+| `AWS_ROLE_TO_ASSUME`   | _(unset)_                                 | Set to an IAM role ARN to authenticate via GitHub OIDC instead of access keys |
+
+> **Before the first CD run**, migrate the existing local Terraform state to S3 — see [terraform/README.md](./terraform/README.md#remote-state).
 
 ## Links
 

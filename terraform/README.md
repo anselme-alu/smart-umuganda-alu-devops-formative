@@ -53,6 +53,8 @@ db-sg   ingress: 5432 from app-sg only  (no public access)
 ```
 terraform/
 ├── versions.tf              # Terraform + provider version constraints
+├── backend.tf               # S3 remote state (partial config, see below)
+├── backend.hcl.example      # Copy to backend.hcl for local runs
 ├── providers.tf             # AWS provider + default tags
 ├── variables.tf             # All input variables (with validation)
 ├── main.tf                  # Root module: wires the child modules, derives secrets
@@ -136,6 +138,49 @@ resource ARN and the `iam:AWSServiceName` condition.
 
 ---
 
+## Remote state
+
+State lives in **S3** (see [`backend.tf`](./backend.tf)) so that local runs and the
+[CD pipeline](../.github/workflows/cd.yaml) operate on the same state. Locking uses
+S3 conditional writes (`use_lockfile`), so no DynamoDB table is needed.
+
+The bucket, key and region are a **partial configuration** — nothing account-specific
+is committed. The pipeline derives them automatically:
+
+| Setting | Value used by CD |
+|---------|------------------|
+| `bucket` | the `TF_STATE_BUCKET` repository variable, or `<project_name>-tfstate-<aws-account-id>` |
+| `key`    | `<project_name>/<environment>/terraform.tfstate` |
+| `region` | the `AWS_REGION` repository variable (default `us-east-1`) |
+
+The pipeline creates the bucket on first run with versioning, encryption and public
+access blocked.
+
+### One-time migration from local state
+
+If you already applied with local state (`terraform.tfstate` in this directory), move it
+to S3 **before the first CD run** — otherwise the pipeline starts from an empty state
+and tries to create a second copy of every resource:
+
+```bash
+# 1. Create the bucket (name must match what CD will use)
+ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+BUCKET="smart-umuganda-tfstate-${ACCOUNT_ID}"
+aws s3api create-bucket --bucket "$BUCKET" --region us-east-1
+aws s3api put-bucket-versioning --bucket "$BUCKET" --versioning-configuration Status=Enabled
+
+# 2. Point your local config at it
+cp backend.hcl.example backend.hcl   # set bucket/key/region to match the table above
+
+# 3. Migrate — Terraform copies the existing state up and asks for confirmation
+terraform init -migrate-state -backend-config=backend.hcl
+
+# 4. Confirm nothing changed
+terraform plan   # should report "No changes"
+```
+
+---
+
 ## Initialize and apply
 
 From this `terraform/` directory:
@@ -146,7 +191,8 @@ cp terraform.tfvars.example terraform.tfvars
 #    edit terraform.tfvars as needed (region, instance size, SSH key, ...)
 
 # 2. Download providers and initialise the working directory
-terraform init
+cp backend.hcl.example backend.hcl   # then edit it — see "Remote state" above
+terraform init -backend-config=backend.hcl
 
 # 3. (Recommended) Sanity-check formatting and configuration
 terraform fmt -recursive
@@ -254,8 +300,13 @@ terraform destroy
 - **No NAT gateway** — private subnets deliberately have no internet route
   (RDS doesn't need one), which keeps the demo cheap.
 - **IMDSv2 enforced** and EBS/RDS storage encrypted as baseline hardening.
-- **Cost awareness** — defaults (`t3.small`, `db.t3.micro`, single-AZ,
+- **Remote state** — S3 with versioning, encryption and native locking, shared by
+  local runs and CI (see [Remote state](#remote-state)).
+- **Automated** — [`.github/workflows/cd.yaml`](../.github/workflows/cd.yaml) runs
+  `fmt`, `validate`, `plan` and `apply` on every push to `main` (or on any commit
+  tagged `[terraform apply]`), then hands the outputs to Ansible.
+- **Cost awareness** — defaults (`t3.micro`, `db.t3.micro`, single-AZ,
   `skip_final_snapshot`) target a low-cost coursework environment. For
-  production, raise the instance sizes, set `multi_az = true`,
-  `deletion_protection = true`, and remote state (S3 + DynamoDB lock).
+  production, raise the instance sizes, set `multi_az = true` and
+  `deletion_protection = true`.
 ```
