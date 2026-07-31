@@ -74,20 +74,18 @@
     recreate: auto
   register: app_compose_result
 
-- name: Wait for the backend health endpoint to report healthy
-  ansible.builtin.uri:
-    url: "http://127.0.0.1:{{ app_backend_port }}/health"
-    status_code: 200
-  register: app_backend_health
-  retries: 20
-  delay: 10
-  until: app_backend_health.status == 200
+- name: Ensure the smoke test script is executable
+  ansible.builtin.file:
+    path: "{{ app_dir }}/scripts/smoke-test.sh"
+    mode: "0755"
 
-- name: Wait for the frontend to respond
-  ansible.builtin.uri:
-    url: "http://127.0.0.1:{{ app_frontend_port }}/"
-    status_code: 200
-  register: app_frontend_health
-  retries: 10
-  delay: 5
-  until: app_frontend_health.status == 200
+- name: Verify the deployment with the shared smoke test script
+  ansible.builtin.command:
+    cmd: ./scripts/smoke-test.sh
+    chdir: "{{ app_dir }}"
+  environment:
+    APPLICATION_URL: "http://127.0.0.1:{{ app_frontend_port }}"
+    API_URL: "http://127.0.0.1:{{ app_backend_port }}/api"
+    SMOKE_BACKEND_ATTEMPTS: "20"
+    SMOKE_BACKEND_DELAY: "10"
+  changed_when: false
