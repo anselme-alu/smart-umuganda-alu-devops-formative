@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { Link } from "react-router-dom";
+import { Link } from "react-router";
 import { Pencil, Trash2, UserCheck, X } from "lucide-react";
 import axios from "axios";
 import api from "../../api/client";

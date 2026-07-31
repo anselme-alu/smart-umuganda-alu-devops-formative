@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import { Link } from "react-router";
 import { Users, MapPin, User, Mail, Calendar, ShieldCheck } from "lucide-react";
 import { useAuth } from "../../contexts/AuthContext";
 import Layout from "../../components/Layout";

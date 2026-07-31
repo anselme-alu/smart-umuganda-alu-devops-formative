@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useParams, useNavigate, Link } from "react-router-dom";
+import { useParams, useNavigate, Link } from "react-router";
 import { ArrowLeft } from "lucide-react";
 import axios from "axios";
 import api from "../../api/client";

@@ -1,9 +1,40 @@
-name: CD
+name: Pipeline
+
+# Single entrypoint for the pipeline.
+#
+#   * every push, on any branch  -> CI (lint, test, build, scan, validate)
+#   * pull requests into main    -> CI, including the PR-only security scans
+#   * push to main               -> CI, then CD (Terraform + Ansible + smoke test)
+#
+# CD is a hard gate: it only starts once every CI job has succeeded, and only
+# for pushes to main. The reusable workflows live in ci.yml and cd.yaml.
 
 on:
   push:
+    branches: ["**"]
+  pull_request:
     branches: [main]
 
+# Cancel superseded runs on feature branches, but never interrupt main — a
+# cancelled run there could abort a deploy midway.
+concurrency:
+  group: pipeline-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+permissions:
+  contents: read
+
 jobs:
+  ci:
+    name: CI
+    uses: ./.github/workflows/ci.yml
+    secrets: inherit
+
   cd:
+    name: CD
+    needs: ci
+    # `needs` already requires CI to have succeeded; this restricts the
+    # deployment to commits that land on main.
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     uses: ./.github/workflows/cd.yaml
+    secrets: inherit

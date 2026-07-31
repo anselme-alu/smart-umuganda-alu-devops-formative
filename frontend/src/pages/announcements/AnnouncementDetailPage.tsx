@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useParams, useNavigate, Link } from "react-router-dom";
+import { useParams, useNavigate, Link } from "react-router";
 import { ArrowLeft, AlertCircle, Edit, Trash2 } from "lucide-react";
 import Layout from "../../components/Layout";
 import api from "../../api/client";

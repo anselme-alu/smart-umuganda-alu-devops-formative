@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate } from "react-router";
 import { ArrowLeft, AlertCircle, Send } from "lucide-react";
 import Layout from "../../components/Layout";
 import api from "../../api/client";

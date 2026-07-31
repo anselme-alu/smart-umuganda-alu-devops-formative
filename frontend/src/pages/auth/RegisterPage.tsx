@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router";
 import { useAuth } from "../../contexts/AuthContext";
 import type { Location } from "../../types";
 import api from "../../api/client";

@@ -2,6 +2,26 @@
   "Version": "2012-10-17",
   "Statement": [
     {
+      "Sid": "TerraformStateBackend",
+      "Effect": "Allow",
+      "Action": [
+        "s3:CreateBucket",
+        "s3:ListBucket",
+        "s3:GetBucketLocation",
+        "s3:GetBucketVersioning",
+        "s3:PutBucketVersioning",
+        "s3:PutEncryptionConfiguration",
+        "s3:PutBucketPublicAccessBlock",
+        "s3:GetObject",
+        "s3:PutObject",
+        "s3:DeleteObject"
+      ],
+      "Resource": [
+        "arn:aws:s3:::smart-umuganda-tfstate-*",
+        "arn:aws:s3:::smart-umuganda-tfstate-*/*"
+      ]
+    },
+    {
       "Sid": "PreflightAndDiscovery",
       "Effect": "Allow",
       "Action": [

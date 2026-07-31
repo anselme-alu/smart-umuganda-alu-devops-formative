@@ -1,12 +1,10 @@
 name: CI
 
+# Reusable workflow — triggered by .github/workflows/main.yaml, which owns the
+# push/pull_request triggers. The `github` context (event_name, ref, sha) is
+# the caller's, so the pull-request-only jobs below still behave as before.
 on:
-  push:
-    branches-ignore:
-      - main
-  pull_request:
-    branches:
-      - main
+  workflow_call:
 
 jobs:
   backend-lint:
@@ -193,6 +191,32 @@ jobs:
             console.log('Audit counts:', v);
             if ((v.high || 0) + (v.critical || 0) > 0) process.exit(1);
           "
+
+  terraform-validate:
+    name: Terraform Validate
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: terraform
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.15.7"
+          terraform_wrapper: false
+
+      - name: Check formatting
+        run: terraform fmt -check -recursive -diff
+
+      # No credentials and no remote state needed for a syntax/type check.
+      - name: Initialize without a backend
+        run: terraform init -backend=false -input=false
+
+      - name: Validate configuration
+        run: terraform validate -no-color
 
   iac-scan:
     name: IaC Scan
